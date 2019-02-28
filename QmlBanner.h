@@ -64,6 +64,10 @@ public slots:
 signals:
     // Emit to QML app when an ad finishes loading
     void bannerLoaded();
+    void bannerFailedToLoad(int errorCode);
+    void bannerOpened();
+    void bannerLeftApplication();
+    void bannerClosed();
 
     // Emit to QML app when load Banner (call loadBanner() method)
     void widthChanged();

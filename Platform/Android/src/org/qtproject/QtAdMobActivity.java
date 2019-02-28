@@ -41,9 +41,16 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
 
     /* Banner Ads Signals (call a function from c++) */
     private static native void BannerLoaded();
+    private static native void BannerFailedToLoad(int errorCode);
+    private static native void BannerOpened();
+    private static native void BannerLeftApplication();
+    private static native void BannerClosed();
 
     /* Interstitial Ads Signals (call a function from c++) */
     private static native void InterstitialAdLoaded();
+    private static native void InterstitialAdFailedToLoad(int errorCode);
+    private static native void InterstitialAdOpened();
+    private static native void InterstitialAdLeftApplication();
     private static native void InterstitialAdClosed();
 
     /* Rewarded Video Ads Signals (call a function from c++) */
@@ -92,6 +99,26 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                         public void onAdLoaded()
                         {
                             BannerLoaded();
+                        }
+
+                        public void onAdFailedToLoad(int errorCode)
+                        {
+                            BannerFailedToLoad(errorCode);
+                        }
+
+                        public void onAdOpened()
+                        {
+                            BannerOpened();
+                        }
+
+                        public void onAdLeftApplication()
+                        {
+                            BannerLeftApplication();
+                        }
+
+                        public void onAdClosed()
+                        {
+                            BannerClosed();
                         }
                     });
                 }
@@ -253,6 +280,24 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                     public void onAdClosed()
                     {
                         InterstitialAdClosed();
+                    }
+
+                    @Override
+                    public void onAdFailedToLoad(int errorCode)
+                    {
+                        InterstitialAdFailedToLoad(errorCode);
+                    }
+
+                    @Override
+                    public void onAdOpened()
+                    {
+                        InterstitialAdOpened();
+                    }
+
+                    @Override
+                    public void onAdLeftApplication()
+                    {
+                        InterstitialAdLeftApplication();
                     }
 
                     @Override

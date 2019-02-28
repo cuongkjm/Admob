@@ -23,6 +23,33 @@ JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_Interstitial
     // Emit to QML app by calling bannerLoaded signal
     emit QmlInterstitialAd::Instances()->interstitialAdClosed();
 }
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdFailedToLoad(JNIEnv *env, jobject thiz, jint errorCode)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlInterstitialAd::Instances()->interstitialAdFailedToLoad(errorCode);
+}
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdOpened(JNIEnv *env, jobject thiz)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlInterstitialAd::Instances()->interstitialAdOpened();
+}
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdLeftApplication(JNIEnv *env, jobject thiz)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlInterstitialAd::Instances()->interstitialAdLeftApplication();
+}
 #endif
 
 #ifdef __cplusplus

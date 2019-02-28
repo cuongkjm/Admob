@@ -14,6 +14,42 @@ JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerLoaded
     // Emit to QML app by calling bannerLoaded signal
     emit QmlBanner::Instances()->bannerLoaded();
 }
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerFailedToLoad(JNIEnv *env, jobject thiz, jint errorCode)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlBanner::Instances()->bannerFailedToLoad(errorCode);
+}
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerOpened(JNIEnv *env, jobject thiz)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlBanner::Instances()->bannerOpened();
+}
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerLeftApplication(JNIEnv *env, jobject thiz)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlBanner::Instances()->bannerLeftApplication();
+}
+
+JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerClosed(JNIEnv *env, jobject thiz)
+{
+    Q_UNUSED(env)
+    Q_UNUSED(thiz)
+
+    // Emit to QML app by calling bannerLoaded signal
+    emit QmlBanner::Instances()->bannerClosed();
+}
 #endif
 
 #ifdef __cplusplus

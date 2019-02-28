@@ -27,6 +27,9 @@ public:
 signals:
     void interstitialAdLoaded();
     void interstitialAdClosed();
+    void interstitialAdFailedToLoad(int errorCode);
+    void interstitialAdOpened();
+    void interstitialAdLeftApplication();
 
 public slots:
     // loadInterstitialAd method for load InterstitialAd
