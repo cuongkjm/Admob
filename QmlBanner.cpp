@@ -1,4 +1,5 @@
 #include "QmlBanner.h"
+#include "QtAdmobBannerIosDelegateImpl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,6 +84,11 @@ QmlBanner::QmlBanner()
     // Call InitializeBanner method of Java
     m_Activity->callMethod<void>("InitializeBanner");
 #endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob = new QtAdmobBannerIosDelegateImpl();
+    m_Admob->setQtAdmobBannerIos(this);
+#endif
 }
 
 void QmlBanner::setUnitId(const QString& unitId)
@@ -97,6 +103,10 @@ void QmlBanner::setUnitId(const QString& unitId)
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setUnitId(unitId);
+#endif
 }
 
 void QmlBanner::setBannerSize(BannerSizes size)
@@ -110,6 +120,10 @@ void QmlBanner::setBannerSize(BannerSizes size)
 #elif _WIN32
     Q_UNUSED(size)
 #endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setBannerSize((QtAdmobBannerIosDelegateImpl::BannerSizes) size);
+#endif
 }
 
 int QmlBanner::getAdBannerWidth()
@@ -121,6 +135,10 @@ int QmlBanner::getAdBannerWidth()
         // Call GetAdBannerWidth method of Java
         width = m_Activity->callMethod<jint>("GetAdBannerWidth");
     }
+#endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    width = m_Admob->getAdBannerWidth();
 #endif
     return width;
 }
@@ -135,6 +153,11 @@ int QmlBanner::getAdBannerHeight()
         height = m_Activity->callMethod<jint>("GetAdBannerHeight");
     }
 #endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    height = m_Admob->getAdBannerHeight();
+#endif
+
     return height;
 }
 
@@ -149,6 +172,10 @@ void QmlBanner::setX(const int &x)
 #elif _WIN32
     Q_UNUSED(x)
 #endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setX(x);
+#endif
 }
 
 void QmlBanner::setY(const int &y)
@@ -162,6 +189,9 @@ void QmlBanner::setY(const int &y)
 #elif _WIN32
     Q_UNUSED(y)
 #endif
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setY(y);
+#endif
 }
 
 void QmlBanner::setVisible(const bool &visible)
@@ -174,6 +204,9 @@ void QmlBanner::setVisible(const bool &visible)
     }
 #elif _WIN32
     Q_UNUSED(visible)
+#endif
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setVisible(visible);
 #endif
 }
 
@@ -189,6 +222,9 @@ void QmlBanner::setTestDeviceId(const QString &testDeviceId)
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->setTestDeviceId(testDeviceId);
+#endif
 }
 
 void QmlBanner::loadBanner()
@@ -201,5 +237,9 @@ void QmlBanner::loadBanner()
         emit widthChanged();
         emit heightChanged();
     }
+#endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    m_Admob->loadBanner();
 #endif
 }

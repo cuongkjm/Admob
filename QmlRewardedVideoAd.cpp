@@ -1,4 +1,5 @@
 #include "QmlRewardedVideoAd.h"
+#include "QtAdmobRewardVideoDelegateImpl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,6 +104,11 @@ QmlRewardedVideoAd::QmlRewardedVideoAd()
     // Call InitializeBanner method of Java
     m_Activity->callMethod<void>("InitializeRewardedVideoAd");
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    m_QtAdmobRewardVideo = new QtAdmobRewardVideoDelegateImpl();
+    m_QtAdmobRewardVideo->setQtAdmobRewardVideoIos(this);
+#endif
 }
 
 QmlRewardedVideoAd *QmlRewardedVideoAd::Instances()
@@ -122,6 +128,10 @@ void QmlRewardedVideoAd::setUnitId(const QString &unitId)
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_QtAdmobRewardVideo->setUnitId(unitId);
+#endif
 }
 
 void QmlRewardedVideoAd::setTestDeviceId(const QString &testDeviceId)
@@ -136,6 +146,10 @@ void QmlRewardedVideoAd::setTestDeviceId(const QString &testDeviceId)
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_QtAdmobRewardVideo->setTestDeviceId(testDeviceId);
+#endif
 }
 
 void QmlRewardedVideoAd::loadRewardedVideoAd()
@@ -147,6 +161,10 @@ void QmlRewardedVideoAd::loadRewardedVideoAd()
         m_Activity->callMethod<void>("LoadRewardedVideoAd");
     }
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_QtAdmobRewardVideo->loadRewardedVideoAd();
+#endif
 }
 
 void QmlRewardedVideoAd::show()
@@ -157,5 +175,9 @@ void QmlRewardedVideoAd::show()
         // Call LoadBanner method of Java
         m_Activity->callMethod<void>("ShowRewardedVideoAd");
     }
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_QtAdmobRewardVideo->show();
 #endif
 }

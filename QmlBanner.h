@@ -3,13 +3,16 @@
 
 #include <QObject>
 #include <QQuickItem>
+#include <QGuiApplication>
 #ifdef Q_OS_ANDROID
 #include <QAndroidJniObject>
 #include <qpa/qplatformnativeinterface.h>
-#endif
-#include <QGuiApplication>
 
 class QAndroidJniObject;
+#endif
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+class QtAdmobBannerIosDelegateImpl;
+#endif
 
 class QmlBanner : public QQuickItem
 {
@@ -76,6 +79,10 @@ signals:
 private:
 #ifdef Q_OS_ANDROID
     QAndroidJniObject* m_Activity;
+#endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    QtAdmobBannerIosDelegateImpl *m_Admob;
 #endif
 };
 

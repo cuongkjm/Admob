@@ -2,13 +2,17 @@
 #define QMLINTERSTITIALAD_H
 
 #include <QObject>
+#include <QGuiApplication>
 #ifdef Q_OS_ANDROID
 #include <QAndroidJniObject>
 #include <qpa/qplatformnativeinterface.h>
-#endif
-#include <QGuiApplication>
 
 class QAndroidJniObject;
+#endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+class QtAdmobInterstitialIosDelegateImpl;
+#endif
 
 class QmlInterstitialAd : public QObject
 {
@@ -41,6 +45,10 @@ public slots:
 private:
 #ifdef Q_OS_ANDROID
     QAndroidJniObject* m_Activity;
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    QtAdmobInterstitialIosDelegateImpl* m_AdmobInterstitial;
 #endif
 };
 

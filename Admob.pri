@@ -38,3 +38,49 @@ HEADERS += \
     $$PWD/QmlBanner.h \
     $$PWD/QmlInterstitialAd.h \
     $$PWD/QmlRewardedVideoAd.h
+
+
+INCLUDEPATH += $$PWD/Platform/Ios
+
+ios:
+{
+    HEADERS += \
+        $$PWD/Platform/Ios/QtAdmobBannerIosDelegate.h \
+        $$PWD/Platform/Ios/QtAdmobBannerIosDelegateImpl.h \
+        $$PWD/Platform/Ios/QtAdmobInterstitialIosDelegate.h \
+        $$PWD/Platform/Ios/QtAdmobInterstitialIosDelegateImpl.h \
+        $$PWD/Platform/Ios/QtAdmobRewardVideoDelegate.h \
+        $$PWD/Platform/Ios/QtAdmobRewardVideoDelegateImpl.h
+
+    SOURCES += \
+        $$PWD/Platform/Ios/QtAdmobBannerIosDelegate.mm \
+        $$PWD/Platform/Ios/QtAdmobInterstitialIosDelegate.mm \
+        $$PWD/Platform/Ios/QtAdmobRewardVideoDelegate.mm
+
+    QMAKE_CXXFLAGS += -fno-objc-arc
+    LIBS += -F $$PWD/Platform/Ios/MobileAds -framework GoogleMobileAds \
+            -framework GoogleAppMeasurement \
+            -framework GoogleUtilities \
+            -framework nanopb
+    QMAKE_LFLAGS += -ObjC
+    QMAKE_INFO_PLIST = $$PWD/Platform/Ios/Info.plist
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

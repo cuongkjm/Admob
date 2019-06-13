@@ -1,4 +1,5 @@
 #include "QmlInterstitialAd.h"
+#include "QtAdmobInterstitialIosDelegateImpl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,6 +76,11 @@ QmlInterstitialAd::QmlInterstitialAd()
     // Call InitializeBanner method of Java
     m_Activity->callMethod<void>("InitializeInterstitialAd");
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    m_AdmobInterstitial = new QtAdmobInterstitialIosDelegateImpl();
+    m_AdmobInterstitial->setQtAdmobInterstitialIos(this);
+#endif
 }
 
 QmlInterstitialAd *QmlInterstitialAd::Instances()
@@ -94,6 +100,10 @@ void QmlInterstitialAd::setInterstitialAdUnitId(const QString &unitId)
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_AdmobInterstitial->setInterstitialAdUnitId(unitId);
+#endif
 }
 
 void QmlInterstitialAd::setInterstitialAdTestDeviceId(const QString &testDeviceId)
@@ -108,6 +118,10 @@ void QmlInterstitialAd::setInterstitialAdTestDeviceId(const QString &testDeviceI
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_AdmobInterstitial->setInterstitialAdTestDeviceId(testDeviceId);
+#endif
 }
 
 void QmlInterstitialAd::loadInterstitialAd()
@@ -119,6 +133,10 @@ void QmlInterstitialAd::loadInterstitialAd()
         m_Activity->callMethod<void>("LoadInterstitialAd");
     }
 #endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    m_AdmobInterstitial->loadInterstitialAd();
+#endif
 }
 
 void QmlInterstitialAd::showInterstitialAd()
@@ -129,5 +147,9 @@ void QmlInterstitialAd::showInterstitialAd()
         // Call ShowInterstitialAd method of Java
         m_Activity->callMethod<void>("ShowInterstitialAd");
     }
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+   m_AdmobInterstitial->showInterstitialAd();
 #endif
 }

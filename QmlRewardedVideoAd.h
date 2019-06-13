@@ -2,12 +2,16 @@
 #define QMLREWARDEDVIDEOAD_H
 
 #include <QObject>
+#include <QGuiApplication>
 #ifdef Q_OS_ANDROID
 #include <QAndroidJniObject>
 #include <QtAndroid>
 #include <qpa/qplatformnativeinterface.h>
 #endif
-#include <QGuiApplication>
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+class QtAdmobRewardVideoDelegateImpl;
+#endif
 
 class QmlRewardedVideoAd : public QObject
 {
@@ -37,6 +41,10 @@ public slots:
 private:
 #ifdef Q_OS_ANDROID
     QAndroidJniObject* m_Activity;
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    QtAdmobRewardVideoDelegateImpl* m_QtAdmobRewardVideo;
 #endif
 };
 
