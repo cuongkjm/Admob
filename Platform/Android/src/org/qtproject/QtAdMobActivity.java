@@ -28,6 +28,7 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
     private int m_AdBannerHeight = 0;
     private int m_AdBannerPositionX = 0;
     private int m_AdBannerPositionY = 0;
+    private int m_StatusbarHeight = 0;
     private String m_AdBannerTestDeviceId;
 
     /* Interstitial Ad variables */
@@ -78,6 +79,9 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                 mAdView = new AdView(self);
                 mAdView.setVisibility(View.VISIBLE);
 
+                //get Statusbar Height
+                m_StatusbarHeight = getStatusBarHeight();
+
                 // Get Android Window Root View
                 View view = getWindow().getDecorView().getRootView();
                 if (view instanceof ViewGroup)
@@ -90,7 +94,7 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                     //                                 FrameLayout.LayoutParams.WRAP_CONTENT);
                     //mAdView.setLayoutParams(layoutParams);
                     mAdView.setX(m_AdBannerPositionX);
-                    mAdView.setY(m_AdBannerPositionY);
+                    mAdView.setY(m_AdBannerPositionY + m_StatusbarHeight);
                     mViewGroup.addView(mAdView);
 
                     mAdView.setAdListener(new AdListener()
@@ -128,7 +132,6 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
 
     public void SetBannerSize(final int size)
     {
-        final QtAdMobActivity self = this;
         runOnUiThread(new Runnable()
         {
             public void run()
@@ -208,11 +211,25 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
 
     public int GetAdBannerWidth()
     {
+        runOnUiThread(new Runnable()
+        {
+            public void run()
+            {
+                m_AdBannerWidth = mAdView.getAdSize().getWidth();
+            }
+        });
         return m_AdBannerWidth;
     }
 
     public int GetAdBannerHeight()
     {
+        runOnUiThread(new Runnable()
+        {
+            public void run()
+            {
+                m_AdBannerHeight = mAdView.getAdSize().getHeight();
+            }
+        });
         return m_AdBannerHeight;
     }
 
@@ -226,7 +243,7 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                                                                                      FrameLayout.LayoutParams.WRAP_CONTENT);
                 mAdView.setLayoutParams(layoutParams);
                 mAdView.setX(m_AdBannerPositionX);
-                mAdView.setY(m_AdBannerPositionY);
+                mAdView.setY(m_AdBannerPositionY + m_StatusbarHeight);
             }
         });
     }
@@ -242,7 +259,7 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                                                                                      FrameLayout.LayoutParams.WRAP_CONTENT);
                mAdView.setLayoutParams(layoutParams);
                mAdView.setX(m_AdBannerPositionX);
-               mAdView.setY(m_AdBannerPositionY);
+               mAdView.setY(m_AdBannerPositionY + m_StatusbarHeight);
           }
       });
     }
@@ -263,6 +280,15 @@ public class QtAdMobActivity extends QtActivity implements RewardedVideoAdListen
                 }
             }
         });
+    }
+
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
     }
 
     /* Interstitial Ad functions*/
