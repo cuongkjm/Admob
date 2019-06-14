@@ -42,9 +42,7 @@ HEADERS += \
 
 INCLUDEPATH += $$PWD/Platform/Ios
 
-ios:
-{
-    HEADERS += \
+ios:HEADERS += \
         $$PWD/Platform/Ios/QtAdmobBannerIosDelegate.h \
         $$PWD/Platform/Ios/QtAdmobBannerIosDelegateImpl.h \
         $$PWD/Platform/Ios/QtAdmobInterstitialIosDelegate.h \
@@ -52,35 +50,17 @@ ios:
         $$PWD/Platform/Ios/QtAdmobRewardVideoDelegate.h \
         $$PWD/Platform/Ios/QtAdmobRewardVideoDelegateImpl.h
 
-    SOURCES += \
+ios:SOURCES += \
         $$PWD/Platform/Ios/QtAdmobBannerIosDelegate.mm \
         $$PWD/Platform/Ios/QtAdmobInterstitialIosDelegate.mm \
         $$PWD/Platform/Ios/QtAdmobRewardVideoDelegate.mm
 
-    QMAKE_CXXFLAGS += -fno-objc-arc
-    LIBS += -F $$PWD/Platform/Ios/MobileAds -framework GoogleMobileAds \
+ios:QMAKE_CXXFLAGS += -fno-objc-arc
+ios:LIBS += -F $$PWD/Platform/Ios/MobileAds -framework GoogleMobileAds \
             -framework GoogleAppMeasurement \
             -framework GoogleUtilities \
             -framework nanopb
-    QMAKE_LFLAGS += -ObjC
-    QMAKE_INFO_PLIST = $$PWD/Platform/Ios/Info.plist
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ios:QMAKE_LFLAGS += -ObjC
+ios:QMAKE_INFO_PLIST = $$PWD/Platform/Ios/Info.plist
 
 
