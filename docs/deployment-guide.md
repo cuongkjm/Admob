@@ -1,77 +1,112 @@
 # Deployment & Integration Guide
 
-This guide details how to integrate and compile the Qt AdMob library inside your Android and iOS applications.
+This guide covers QtAdMob integration as a Qt 6 CMake submodule for Android, iOS, and desktop builds.
 
-## 1. Project-wide Setup
+## 1. CMake Setup
 
-Include the `Admob.pri` project inclusion file inside your main Qt project file (`.pro`):
+Add the repository to your app build and link the target:
 
-```qmake
-include($$PWD/path/to/Admob/Admob.pri)
+```cmake
+add_subdirectory(path/to/Admob)
+
+qt_add_executable(myapp main.cpp)
+target_link_libraries(myapp PRIVATE QtAdMob::qtadmob)
+
+qtadmob_configure_android_target(myapp)
 ```
 
-Ensure your main configuration is ready for cross-platform linking:
-- Add `quick` and `gui-private` to your `QT` variable.
-- For Android builds, the library automatically adds the `androidextras` module.
+`qtadmob_configure_android_target()` is a no-op outside Android. On Android it sets `QT_ANDROID_PACKAGE_SOURCE_DIR` so Qt deployment sees the Java sources and `proguard-rules.pro`.
 
----
+## 2. Platform Behavior
 
-## 2. Android Deployment Steps
+| Platform | Behavior | Required SDK |
+| --- | --- | --- |
+| Android | Real ads through Java/JNI | Android SDK/NDK + Google Mobile Ads Android SDK |
+| iOS | Real ads through Objective-C++ | Google Mobile Ads iOS SDK |
+| Windows | Compile no-op | Qt 6 only |
+| macOS desktop | Compile no-op | Qt 6 only |
+| Linux | Compile no-op | Qt 6 only |
 
-### Step 2.1: AndroidManifest.xml Configuration
-Add the AdMob Application ID metadata and network permissions inside your application tag in `AndroidManifest.xml`:
+Desktop no-op methods keep shared QML source compilable and do not emit fake success callbacks.
+
+## 3. Android Deployment
+
+### AndroidManifest.xml
+
+Add the AdMob application id inside the app manifest:
 
 ```xml
-<manifest ...>
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <application android:name="org.qtproject.qt5.android.bindings.QtApplication" ...>
-        <!-- Sample AdMob App ID. Replace with your actual App ID -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
-    </application>
-</manifest>
+<meta-data
+    android:name="com.google.android.gms.ads.APPLICATION_ID"
+    android:value="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy" />
 ```
 
-### Step 2.2: Build Gradle Dependencies
-In your Android build configurations (`build.gradle`), include the play-services-ads library reference:
+No custom `QtActivity` subclass is required. QtAdMob provides Java helper classes under `com.qtadmob`.
+
+### Gradle Dependency
+
+Ensure the app Android build includes Google Mobile Ads SDK:
 
 ```groovy
 dependencies {
-    implementation 'com.google.android.gms:play-services-ads:20.6.0' // Use an appropriate compatible version
+    implementation 'com.google.android.gms:play-services-ads:23.+'
 }
 ```
 
-### Step 2.3: Use Custom Activity Class
-Ensure your Android configuration points to our custom activity class rather than default `QtActivity`:
-- Set `android:name` in your `<activity>` tag within `AndroidManifest.xml` to `com.gmail.manhcuong5993.QtAdMobActivity`.
+Use the version required by your app policy and Google Play requirements.
 
----
+## 4. iOS Deployment
 
-## 3. iOS Deployment Steps
-
-On iOS, the QMake environment configures linking directly via standard system properties.
-
-### Step 3.1: Framework & Binary Setup
-The `Admob.pri` configures iOS deployment settings automatically:
-- It configures standard search framework paths: `$$PWD/Platform/Ios/MobileAds`.
-- It links against core Cocoa frameworks:
-  - `GoogleMobileAds`
-  - `GoogleAppMeasurement`
-  - `GoogleUtilities`
-  - `nanopb`
-- Employs `-ObjC` linking configuration and disables Automatic Reference Counting specifically on library files (`-fno-objc-arc`).
-
-Ensure you have placed the Google Mobile Ads SDK framework packages inside the designated search folder: `Platform/Ios/MobileAds/`.
-
-### Step 3.2: Info.plist Configuration
-AdMob on iOS requires the `GADApplicationIdentifier` property inside the main app bundle `Info.plist` file:
+Add `GADApplicationIdentifier` to the app `Info.plist`:
 
 ```xml
 <key>GADApplicationIdentifier</key>
-<string>ca-app-pub-3940256099942544~1458002511</string>
+<string>ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy</string>
 ```
 
-*Note: The bundled `Platform/Ios/Info.plist` file is pre-configured with Google's default simulator testing App ID.*
+Install Google Mobile Ads iOS SDK using one of these official paths. This library is validated with manual Google Mobile Ads iOS SDK `13.5.0`.
+
+- Swift Package Manager: `https://github.com/googleads/swift-package-manager-google-mobile-ads.git`
+- CocoaPods: `pod 'Google-Mobile-Ads-SDK'`
+- Manual/local framework: downloaded `GoogleMobileAds.framework` or `GoogleMobileAds.xcframework`
+
+For direct CMake builds where the app does not provide the SDK, pass the directory containing `GoogleMobileAds.framework`, the framework itself, or `GoogleMobileAds.xcframework`:
+
+```cmake
+set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
+```
+
+Missing SDK should fail iOS compile/link clearly because real iOS ads require Google's framework.
+
+## 5. Validation Commands
+
+### macOS Desktop
+
+```bash
+cmake -S . -B build/macos -DCMAKE_PREFIX_PATH="$HOME/Qt/6.10.0/macos"
+cmake --build build/macos
+```
+
+### Android arm64
+
+```bash
+cmake -S . -B build/android-arm64 \
+  -DCMAKE_TOOLCHAIN_FILE="$HOME/Qt/6.10.0/android_arm64_v8a/lib/cmake/Qt6/qt.toolchain.cmake" \
+  -DQT_HOST_PATH="$HOME/Qt/6.10.0/macos" \
+  -DANDROID_SDK_ROOT="/Users/cuongkjm/Qt/android_sdk" \
+  -DANDROID_NDK_ROOT="/Users/cuongkjm/Qt/android_sdk/ndk/android-ndk-r28c"
+cmake --build build/android-arm64
+```
+
+### iOS
+
+```bash
+cmake -S . -B build/ios \
+  -DCMAKE_TOOLCHAIN_FILE="$HOME/Qt/6.9.3/ios/lib/cmake/Qt6/qt.toolchain.cmake" \
+  -DQT_HOST_PATH="$HOME/Qt/6.9.3/macos" \
+  -DGOOGLE_MOBILE_ADS_IOS_ROOT="/path/to/GoogleMobileAds.xcframework"
+cmake --build build/ios
+```
+
+## Unresolved Questions
+- None.

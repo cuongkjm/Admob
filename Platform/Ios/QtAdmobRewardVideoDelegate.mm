@@ -2,6 +2,20 @@
 #include "QtAdmobRewardVideoDelegateImpl.h"
 #include "QmlRewardedVideoAd.h"
 
+namespace {
+UIViewController* rootViewController()
+{
+    UIApplication *application = [UIApplication sharedApplication];
+    NSArray *windows = [application windows];
+    UIViewController * __block controller = nil;
+    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
+        controller = [window rootViewController];
+        *stop = (controller != nil);
+    }];
+    return controller;
+}
+}
+
 @implementation QtAdmobRewardVideoDelegate
 
 - (id)init:(QtAdmobRewardVideoDelegateImpl *)handler {
@@ -9,17 +23,16 @@
     if (self)
     {
         _handler = handler;
-        _testDevices = [[NSMutableArray alloc] initWithArray:@[kGADSimulatorID]];
-        //_rewardVideoView = [GADRewardBasedVideoAd sharedInstance];
-        //_rewardVideoView.delegate = self;
-        [GADRewardBasedVideoAd sharedInstance].delegate = self;
-        _request = [GADRequest alloc];
-        _request.testDevices = _testDevices;
+        _request = [GADRequest request];
     }
     return self;
 }
 
 - (void)dealloc {
+    _rewardedAd.fullScreenContentDelegate = nil;
+    _handler = nullptr;
+    _request = nil;
+    _rewardedAd = nil;
     [super dealloc];
 }
 
@@ -28,68 +41,58 @@
 }
 
 - (void)setTestDeviceId:(const QString &)testDeviceid {
-    [_request.testDevices arrayByAddingObject:[NSString stringWithUTF8String:testDeviceid.toUtf8().data()]];
+    NSString *identifier = [NSString stringWithUTF8String:testDeviceid.toUtf8().data()];
+    [GADMobileAds sharedInstance].requestConfiguration.testDeviceIdentifiers = @[identifier];
 }
 
 - (void)loadRewardedVideoAd
 {
-    [[GADRewardBasedVideoAd sharedInstance] loadRequest:_request withAdUnitID:_adUnitId];
+    if (!_adUnitId) {
+        return;
+    }
+
+    [GADRewardedAd loadWithAdUnitID:_adUnitId request:_request completionHandler:^(GADRewardedAd *ad, NSError *error) {
+        if (error) {
+            _handler->rewardedVideoAdFailedToLoad(static_cast<int>(error.code));
+            return;
+        }
+        _rewardedAd = ad;
+        _rewardedAd.fullScreenContentDelegate = self;
+        _handler->rewardedVideoAdLoaded();
+    }];
 }
 
 - (void)showVideo {
-    UIApplication *application = [UIApplication sharedApplication];
-    NSArray *windows = [application windows];
-    UIViewController * __block rootViewController = nil;
-    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-        rootViewController = [window rootViewController];
-        *stop = (rootViewController != nil);
+    if (!_rewardedAd) {
+        return;
+    }
+
+    [_rewardedAd presentFromRootViewController:rootViewController() userDidEarnRewardHandler:^{
+        _handler->rewarded();
+        _handler->rewardedVideoCompleted();
     }];
-    
-    [[GADRewardBasedVideoAd sharedInstance] presentFromRootViewController:rootViewController];
 }
 
-- (void)rewardBasedVideoAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd didFailToLoadWithError:(NSError *)error {
-    Q_UNUSED(rewardBasedVideoAd);
+- (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad didFailToPresentFullScreenContentWithError:(nonnull NSError *)error {
+    Q_UNUSED(ad);
     _handler->rewardedVideoAdFailedToLoad(static_cast<int>(error.code));
 }
 
-- (void)rewardBasedVideoAdWillLeaveApplication:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
-    _handler->rewardedVideoAdLeftApplication();
-}
-
-- (void)rewardBasedVideoAdDidCompletePlaying:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
-    _handler->rewardedVideoCompleted();
-}
-
-- (void)rewardBasedVideoAdMetadataDidChange:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
-}
-
-- (void)rewardBasedVideoAdDidStartPlaying:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
+- (void)adWillPresentFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
+    Q_UNUSED(ad);
+    _handler->rewardedVideoAdOpened();
     _handler->rewardedVideoStarted();
 }
 
-- (void)rewardBasedVideoAdDidReceiveAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
-    _handler->rewardedVideoAdLoaded();
-}
-
-- (void)rewardBasedVideoAdDidClose:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
+- (void)adWillDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
+    Q_UNUSED(ad);
     _handler->rewardedVideoAdClosed();
 }
 
-- (void)rewardBasedVideoAdDidOpen:(GADRewardBasedVideoAd *)rewardBasedVideoAd {
-    Q_UNUSED(rewardBasedVideoAd);
-    _handler->rewardedVideoAdOpened();
-}
-
-- (void)rewardBasedVideoAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd didRewardUserWithReward:(GADAdReward *)reward {
-    Q_UNUSED(rewardBasedVideoAd);
-    Q_UNUSED(reward);
+- (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
+    Q_UNUSED(ad);
+    _handler->rewardedVideoAdClosed();
+    _rewardedAd = nil;
 }
 
 QtAdmobRewardVideoDelegateImpl::QtAdmobRewardVideoDelegateImpl() {

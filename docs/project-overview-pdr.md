@@ -1,78 +1,59 @@
-# Project Overview & Product Development Requirements (PDR)
-
-This document provides a high-level overview of the Qt AdMob library and specifies its product development requirements.
+# Project Overview & Product Development Requirements
 
 ## 1. Product Overview
 
-The **Qt AdMob Library** is a cross-platform integration wrapper that allows C++ and QML-based Qt applications to easily serve advertisements using the **Google Mobile Ads SDK (AdMob)** on both Android and iOS devices.
+QtAdMob is a Qt 6 CMake library that exposes Google AdMob banner, interstitial, and rewarded ads to C++/QML apps.
 
-### Purpose
-The primary purpose is to provide a unified, clean, and declarative QML API that abstracts the complex underlying platform-specific integration patterns (Android JNI/Java and iOS Objective-C++) for Google Mobile Ads.
+Real ads are supported on Android and iOS. Windows, macOS desktop, and Linux are supported as compile-safe no-op targets so one shared Qt/QML source tree can build across the main OS families.
 
-### Supported Ad Formats
-1. **Banner Ads (`QmlBanner`)**: Rectangular image or text ads that occupy a portion of an app's layout. Features customizable sizing, positioning, and visibility control.
-2. **Interstitial Ads (`QmlInterstitialAd`)**: Full-screen ads that cover the interface of their host app until closed by the user. Best displayed during natural transition points in the app flow.
-3. **Rewarded Video Ads (`QmlRewardedVideoAd`)**: Full-screen video ads that reward users for watching.
+## 2. Target Users
 
-### Target Audience
-Qt and QML mobile application developers looking for a robust, performant, and easy-to-use AdMob wrapper without needing to write platform-specific JNI or Objective-C glue code themselves.
+Qt/QML developers who want one declarative API for mobile ads while keeping desktop builds simple and portable.
 
----
+## 3. Supported Ad Formats
 
-## 2. Product Requirements (PDR)
+- `QmlBanner`: banner ads with unit id, size, position, visibility, width, and height.
+- `QmlInterstitialAd`: full-screen interstitial ads with load/show lifecycle signals.
+- `QmlRewardedVideoAd`: rewarded ads with reward and lifecycle signals.
 
-### Functional Requirements
+## 4. Functional Requirements
 
-#### Banner Ads (`QmlBanner`)
-- **F-BAN-01**: Must allow setting an AdMob Unit ID (`unitId`) and a Test Device ID (`testDeviceId`).
-- **F-BAN-02**: Must support multiple standard banner sizes via a `BannerSizes` enumeration (e.g., `BANNER`, `FLUID`, `FULL_BANNER`, `LARGE_BANNER`, `LEADERBOARD`, `MEDIUM_RECTANGLE`, `SMART_BANNER`, `WIDE_SKYSCRAPER`).
-- **F-BAN-03**: Must allow dynamic setting of positions (`x` and `y` coordinates) on the screen.
-- **F-BAN-04**: Must automatically handle status bar height offsets on Android and iOS so ads do not overlap system status bars unless specified.
-- **F-BAN-05**: Must support visibility toggles (`visible` property).
-- **F-BAN-06**: Must expose read-only actual `width` and `height` properties in pixels, notifying QML when they change.
-- **F-BAN-07**: Must emit signals for Lifecycle Events:
-  - `bannerLoaded()`
-  - `bannerFailedToLoad(int errorCode)`
-  - `bannerOpened()`
-  - `bannerClosed()`
-  - `bannerLeftApplication()`
+### Banner Ads
+- **F-BAN-01**: Set AdMob unit id and test device id.
+- **F-BAN-02**: Support standard banner size enum values.
+- **F-BAN-03**: Set banner position and visibility.
+- **F-BAN-04**: Expose read-only native banner width and height.
+- **F-BAN-05**: Emit mobile lifecycle signals from real platform SDK callbacks.
+- **F-BAN-06**: Desktop `loadBanner()` is safe no-op and emits no fake success.
 
-#### Interstitial Ads (`QmlInterstitialAd`)
-- **F-INT-01**: Must support setting an AdMob Unit ID (`unitId`) and a Test Device ID (`testDeviceId`).
-- **F-INT-02**: Must provide a `loadInterstitialAd()` slot to fetch the ad asynchronously in the background.
-- **F-INT-03**: Must provide a `showInterstitialAd()` slot to present the loaded ad on screen.
-- **F-INT-04**: Must emit signals for Lifecycle Events:
-  - `interstitialAdLoaded()`
-  - `interstitialAdFailedToLoad(int errorCode)`
-  - `interstitialAdOpened()`
-  - `interstitialAdClosed()`
-  - `interstitialAdLeftApplication()`
+### Interstitial Ads
+- **F-INT-01**: Set AdMob unit id and test device id.
+- **F-INT-02**: Load and show interstitial ads on Android/iOS.
+- **F-INT-03**: Emit mobile lifecycle signals from real platform SDK callbacks.
+- **F-INT-04**: Desktop load/show methods are safe no-op and emit no fake success.
 
-#### Rewarded Video Ads (`QmlRewardedVideoAd`)
-- **F-REW-01**: Must support setting an AdMob Unit ID (`unitId`) and a Test Device ID (`testDeviceId`).
-- **F-REW-02**: Must provide a `loadRewardedVideoAd()` slot to fetch the ad asynchronously.
-- **F-REW-03**: Must provide a `show()` slot to display the video ad.
-- **F-REW-04**: Must trigger rewards accurately upon user completion.
-- **F-REW-05**: Must emit signals for Lifecycle Events:
-  - `rewardedVideoAdLoaded()`
-  - `rewardedVideoAdFailedToLoad(int errorCode)`
-  - `rewardedVideoAdOpened()`
-  - `rewardedVideoAdClosed()`
-  - `rewardedVideoAdLeftApplication()`
-  - `rewardedVideoStarted()`
-  - `rewardedVideoCompleted()`
-  - `rewarded()` (emitted when user successfully qualifies for reward)
+### Rewarded Ads
+- **F-REW-01**: Set AdMob unit id and test device id.
+- **F-REW-02**: Load and show rewarded ads on Android/iOS.
+- **F-REW-03**: Emit reward only when the native mobile SDK reports a real reward.
+- **F-REW-04**: Desktop load/show methods are safe no-op and emit no fake reward.
 
-### Non-Functional Requirements
+## 5. Non-Functional Requirements
 
-#### Performance & Responsiveness
-- **NF-PER-01**: All ad-loading requests must execute asynchronously. Main UI thread (QML rendering) must not block or stutter during network fetches.
-- **NF-PER-02**: Platform-specific UI operations (like creating and adding `AdView` container overlays) must run on the appropriate platform thread (e.g., `runOnUiThread` in Android).
+### Portability
+- **NF-PORT-01**: Build as a Qt 6 CMake submodule through `add_subdirectory()` or `FetchContent`.
+- **NF-PORT-02**: Support Android, iOS, Windows, macOS desktop, and Linux from one source tree.
+- **NF-PORT-03**: Desktop builds require Qt 6 only, with no Android/iOS/AdMob SDK dependency.
 
-#### Developer Integration Experience
-- **NF-DEV-01**: Installation must be achievable by including a single project include (`Admob.pri`) in the main `.pro` file of a Qt project.
-- **NF-DEV-02**: Access to the ad managers must be clean, leveraging singleton-like access patterns (`Instances()` static methods) or declarative QML item instantiations.
+### Integration
+- **NF-DEV-01**: Expose one namespaced target: `QtAdMob::qtadmob`.
+- **NF-DEV-02**: Android consumers call `qtadmob_configure_android_target(myapp)` after linking.
+- **NF-DEV-03**: iOS consumers provide Google Mobile Ads SDK through SPM, CocoaPods, or `GOOGLE_MOBILE_ADS_IOS_ROOT`; manual SDK `13.5.0` is validated.
 
-#### Compatibility & Maintainability
-- **NF-CMP-01**: Must support Android (minimum SDK level compatible with Google Mobile Ads) and iOS (iOS 10+ target).
-- **NF-CMP-02**: Library should keep dependencies minimal, utilizing Qt's native `androidextras` on Android, and linking directly to official Google Mobile Ads SDK framework binaries on iOS.
+### Safety
+- **NF-SAFE-01**: Android callbacks validate native pointers before dispatch.
+- **NF-SAFE-02**: Signal emissions from JNI are queued back to Qt.
+- **NF-SAFE-03**: Destructors detach native callbacks before wrapper deletion.
+
+## Unresolved Questions
+- None.

@@ -9,12 +9,11 @@
 
 @interface QtAdmobBannerIosDelegate : NSObject<GADBannerViewDelegate>
 
-@property (nonatomic, strong) GADBannerView* bannerView;
-@property (nonatomic, strong) NSMutableArray* testDevices;
-@property (nonatomic, assign) QtAdmobBannerIosDelegateImpl *handler;
-@property (nonatomic, strong) GADRequest *request;
+@property (nonatomic, strong, nullable) GADBannerView* bannerView;
+@property (nonatomic, assign, nullable) QtAdmobBannerIosDelegateImpl *handler;
+@property (nonatomic, strong, nullable) GADRequest *request;
 
--(id) init: (QtAdmobBannerIosDelegateImpl*) handler;
+-(nonnull id) init: (QtAdmobBannerIosDelegateImpl *_Nonnull) handler;
 -(void) dealloc;
 -(void) setPosition: (const int &) x : (const int &) y;
 -(void) setUnitId: (const QString &) unitId;
@@ -25,14 +24,12 @@
 -(void) setVisible: (const bool &) visible;
 -(void) setTestDeviceId: (const QString &) deviceId;
 
-//function from GADBannerViewDelegate
-- (void)adViewDidReceiveAd:(nonnull GADBannerView *)view;
-- (void)adView:(nonnull GADBannerView *)view
-didFailToReceiveAdWithError:(nonnull GADRequestError *)error;
-- (void)adViewWillPresentScreen:(nonnull GADBannerView *)view;
-- (void)adViewWillDismissScreen:(nonnull GADBannerView *)view;
-- (void)adViewDidDismissScreen:(nonnull GADBannerView *)view;
-- (void)adViewWillLeaveApplication:(nonnull GADBannerView *)view;
+- (void)bannerViewDidReceiveAd:(nonnull GADBannerView *)bannerView;
+- (void)bannerView:(nonnull GADBannerView *)bannerView
+    didFailToReceiveAdWithError:(nonnull NSError *)error;
+- (void)bannerViewWillPresentScreen:(nonnull GADBannerView *)bannerView;
+- (void)bannerViewWillDismissScreen:(nonnull GADBannerView *)bannerView;
+- (void)bannerViewDidDismissScreen:(nonnull GADBannerView *)bannerView;
 
 @end
 

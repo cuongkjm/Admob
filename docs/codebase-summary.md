@@ -1,54 +1,58 @@
 # Codebase Summary
 
-This document maps out the AdMob Qt integration library codebase, describing the files, their sizes, their core responsibilities, and how they fit together.
+This document maps the current QtAdMob Qt 6 CMake codebase.
 
-## 1. Directory Structure Overview
+## 1. Directory Structure
 
-The repository is structured logically to separate C++ QML wrapper bindings from the platform-specific native implementations:
-
-```
+```text
 .
-├── Admob.pri                    # Qt Project include file containing compile config
-├── QmlBanner.h / .cpp           # C++ Wrapper for Banner Ads
-├── QmlInterstitialAd.h / .cpp   # C++ Wrapper for Interstitial Ads
-├── QmlRewardedVideoAd.h / .cpp  # C++ Wrapper for Rewarded Video Ads
+├── CMakeLists.txt
+├── ActiveRegistry.h
+├── QmlBanner.h / QmlBanner.cpp
+├── QmlInterstitialAd.h / QmlInterstitialAd.cpp
+├── QmlRewardedVideoAd.h / QmlRewardedVideoAd.cpp
 ├── Platform/
 │   ├── Android/
-│   │   └── src/org/qtproject/
-│   │       └── QtAdMobActivity.java # Subclassed QtActivity implementing AdMob SDK on Android
+│   │   ├── proguard-rules.pro
+│   │   └── src/com/qtadmob/
+│   │       ├── AdMobBanner.java
+│   │       ├── AdMobController.java
+│   │       ├── AdMobInterstitial.java
+│   │       └── AdMobRewardedVideo.java
 │   └── Ios/
-│       ├── Info.plist           # iOS Configuration Plist with AdMob GADApplicationIdentifier
-│       ├── QtAdmobBannerIosDelegate.h / .mm
-│       ├── QtAdmobBannerIosDelegateImpl.h
-│       ├── QtAdmobInterstitialIosDelegate.h / .mm
-│       ├── QtAdmobInterstitialIosDelegateImpl.h
-│       ├── QtAdmobRewardVideoDelegate.h / .mm
-│       └── QtAdmobRewardVideoDelegateImpl.h
-└── docs/                        # Technical Documentation
+│       ├── Info.plist
+│       ├── QtAdmobBannerIosDelegate.*
+│       ├── QtAdmobInterstitialIosDelegate.*
+│       └── QtAdmobRewardVideoDelegate.*
+└── docs/
 ```
 
----
+## 2. Responsibility Matrix
 
-## 2. File Directory & Responsibility Matrix
+| Path | Responsibility |
+| --- | --- |
+| `CMakeLists.txt` | Defines `QtAdMob::qtadmob`, Qt 6 dependencies, Android package helper, and iOS framework linkage. |
+| `ActiveRegistry.h` | Tracks live Android wrapper pointers to block late JNI callbacks after destruction. |
+| `QmlBanner.*` | QML banner API, property state, Android/iOS bridge calls, desktop no-op behavior. |
+| `QmlInterstitialAd.*` | QML interstitial API, lifecycle signals, Android/iOS bridge calls, desktop no-op behavior. |
+| `QmlRewardedVideoAd.*` | QML rewarded API, reward/lifecycle signals, Android/iOS bridge calls, desktop no-op behavior. |
+| `Platform/Android/src/com/qtadmob/` | Java AdMob helpers using modern load/show APIs and native-pointer callbacks. |
+| `Platform/Android/proguard-rules.pro` | Keeps JNI classes and native method names safe during release minification. |
+| `Platform/Ios/` | Objective-C++ delegates for Google Mobile Ads iOS SDK integration. |
 
-| File Path | Language | Approximate LOC | Core Responsibility |
-|:---|:---|:---:|:---|
-| `Admob.pri` | QMake | 66 | Sets compiler flags, framework search paths, links Google Mobile Ads framework for iOS, includes `androidextras` for Android, and defines header/source inclusion files. |
-| `QmlBanner.h` / `QmlBanner.cpp` | C++ / Qt | 334 | Wraps Banner functionality. Exposes QML-bindable properties (`unitId`, `bannerSize`, `x`, `y`, `visible`, etc.) and handles direct Android JNI / iOS ObjC delegate execution. |
-| `QmlInterstitialAd.h` / `QmlInterstitialAd.cpp` | C++ / Qt | 210 | Wraps Interstitial Ads. Handles loading and showing interstitial ads on both OS layers. |
-| `QmlRewardedVideoAd.h` / `QmlRewardedVideoAd.cpp` | C++ / Qt | 234 | Wraps Rewarded Video Ads. Communicates rewards and lifecycle states to QML. |
-| `Platform/Android/src/org/qtproject/QtAdMobActivity.java` | Java | 511 | Android Main Activity. Directly integrates Google Play Services Mobile Ads. Handles JNI callbacks, status bar height calculation, and main thread UI scheduling for Android views. |
-| `Platform/Ios/QtAdmobBannerIosDelegate.h` / `...Delegate.mm` | Objective-C++ | 280 | Implements `GADBannerViewDelegate`. Connects a native `GADBannerView` to the root view controller of the Qt iOS application. |
-| `Platform/Ios/QtAdmobBannerIosDelegateImpl.h` | C++ | 51 | Pure C++ header representing the internal bridge context between `QmlBanner` and `QtAdmobBannerIosDelegate`. |
-| `Platform/Ios/QtAdmobInterstitialIosDelegate.h` / `...Delegate.mm` | Objective-C++ | 186 | Implements `GADInterstitialDelegate` for lifecycle updates and manages native iOS interstitial loading and playback. |
-| `Platform/Ios/QtAdmobInterstitialIosDelegateImpl.h` | C++ | 33 | Bridge representation for the C++/Objective-C boundary on iOS Interstitial ads. |
-| `Platform/Ios/QtAdmobRewardVideoDelegate.h` / `...Delegate.mm` | Objective-C++ | 198 | Implements `GADRewardBasedVideoAdDelegate` (legacy style) to coordinate rewarded video actions on iOS. |
-| `Platform/Ios/QtAdmobRewardVideoDelegateImpl.h` | C++ | 38 | Bridge representation for C++/Objective-C boundary on iOS Rewarded video ads. |
-| `Platform/Ios/Info.plist` | XML | 44 | Project configuration profile containing GADApplicationIdentifier to supply AdMob Application ID on iOS execution. |
+## 3. Platform Summary
 
----
+| Platform | Code Path |
+| --- | --- |
+| Android | Real AdMob via Java/JNI and Google Mobile Ads Android SDK. |
+| iOS | Real AdMob via Objective-C++ and Google Mobile Ads iOS SDK. |
+| Windows | Compiles public API with no-op ad methods. |
+| macOS desktop | Compiles public API with no-op ad methods. |
+| Linux | Compiles public API with no-op ad methods. |
 
-## 3. Modularization Assessment
+## 4. Build Model
 
-- **File Sizes**: The majority of implementation files conform perfectly to size constraints (<200 LOC per file in C++ headers and delegates, around 200-300 LOC for cpp implementation files).
-- **Core Activity Complexity**: The largest file in the repository is `QtAdMobActivity.java` (~511 LOC). Because Java integration with Qt on Android relies on subclassing the main `QtActivity`, consolidating banner, interstitial, and rewarded features into this single activity ensures JNI methods can resolve their native bindings reliably against a single activity instance. This layout represents standard practice for older Qt-Android JNI structures.
+The repository is intended to be consumed by `add_subdirectory(path/to/Admob)` or `FetchContent_MakeAvailable(QtAdMob)`. It avoids QMake, absolute local paths, and parent-project global CMake settings.
+
+## Unresolved Questions
+- None.

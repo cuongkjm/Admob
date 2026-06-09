@@ -17,6 +17,21 @@ A cross-platform C++ and QML library for integrating Google AdMob into Qt 6 mobi
 - Qt 6 with CMake.
 - Android: Google Mobile Ads SDK available to the Android Gradle build.
 - iOS: Google Mobile Ads SDK installed through Swift Package Manager, CocoaPods, or a local `GoogleMobileAds.framework` / `GoogleMobileAds.xcframework` path.
+- Desktop: Windows, macOS desktop, and Linux compile with no-op ad methods because Google AdMob has no desktop SDK.
+
+---
+
+## Platform Behavior
+
+| Platform | Behavior | Extra SDK Required |
+| --- | --- | --- |
+| Android | Real AdMob integration through Java/JNI | Android SDK/NDK + Google Mobile Ads Android SDK |
+| iOS | Real AdMob integration through Objective-C++ | Google Mobile Ads iOS SDK |
+| Windows | Compiles, ad methods are no-op | None |
+| macOS desktop | Compiles, ad methods are no-op | None |
+| Linux | Compiles, ad methods are no-op | None |
+
+Desktop no-op methods do not emit fake success callbacks.
 
 ---
 
@@ -45,13 +60,21 @@ Android apps still need an AdMob application id in their manifest metadata:
 
 No custom `QtActivity` subclass is required.
 
-For direct iOS CMake builds, pass the local Google Mobile Ads framework root when it is not already provided by the app build system:
+## Google Mobile Ads iOS SDK
+
+Get the iOS SDK from Google's official Google Mobile Ads iOS documentation: https://developers.google.com/admob/ios/quick-start. This library is validated with manual Google Mobile Ads iOS SDK `13.5.0`. Use one of these app-level integration paths:
+
+- **Swift Package Manager**: add `https://github.com/googleads/swift-package-manager-google-mobile-ads.git` in Xcode.
+- **CocoaPods**: add `pod 'Google-Mobile-Ads-SDK'` to the app `Podfile`.
+- **Local framework**: use downloaded `GoogleMobileAds.framework` or `GoogleMobileAds.xcframework` for direct CMake builds.
+
+For direct iOS CMake builds, pass a local path when it is not already provided by the app build system. The path can be the directory containing `GoogleMobileAds.framework`, the framework itself, or `GoogleMobileAds.xcframework`:
 
 ```cmake
 set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
 ```
 
-Swift Package Manager or CocoaPods integration in the app target is usually easier than manually managing the framework path.
+If the SDK is missing, iOS builds should fail clearly at compile/link time instead of silently disabling real ads.
 
 ---
 

@@ -1,38 +1,46 @@
 # Design Principles
 
-This document outlines the design principles underlying the Qt AdMob integration API.
+## 1. Declarative QML API
 
-## 1. Declarative QML Design
+QtAdMob should feel like a normal QML API even though real ads are native mobile SDK views.
 
-A core goal of this library is to seamlessly blend native mobile ad integrations into QML's declarative, property-binding-centric philosophy.
+```qml
+QmlBanner {
+    unitId: "ca-app-pub-3940256099942544/6300978111"
+    bannerSize: QmlBanner.BANNER
+    visible: true
+    x: 0
+    y: parent.height - height
+}
+```
 
-- **Reactive Property Bindings**: Banner properties such as position, visibility, or size are exposed as reactive Qt Properties (`Q_PROPERTY`). Developers don't need to manually invoke setters across thread boundaries; standard QML layout binding handles positioning instantly:
-  ```qml
-  QmlBanner {
-      id: banner
-      unitId: "ca-app-pub-3940256099942544/6300978111"
-      bannerSize: QmlBanner.BANNER
-      visible: true
-      x: parent.width - width
-      y: parent.height - height
-  }
-  ```
+Properties store developer intent. Platform layers decide whether that intent creates real native ads or becomes desktop no-op state.
 
-- **Asynchronous & Non-blocking Operations**: Ad loading can take several seconds and involves expensive networking. The library keeps all API loading calls strictly asynchronous. Initiating a load action is done via explicit action slots (`loadBanner()`, `loadInterstitialAd()`), while state updates are received via reactive QML signal handlers:
-  ```qml
-  onBannerLoaded: {
-      console.log("Banner is ready to be displayed.")
-  }
-  onBannerFailedToLoad: {
-      console.log("Failed to fetch banner ad, error code:", errorCode)
-  }
-  ```
+## 2. One Source Tree Across OS Families
 
----
+Apps should be able to keep one shared Qt/QML source tree for Android, iOS, Windows, macOS desktop, and Linux.
 
-## 2. Singleton-Like Native Routing
+- Android and iOS call real Google Mobile Ads SDKs.
+- Desktop platforms compile the same API with no-op ad methods.
+- Desktop no-op behavior must not simulate successful ads or rewards.
 
-Because each application typically runs a single ad unit stream or unified screen presentation context, native mobile integrations utilize singleton registration concepts:
+## 3. Native Callback Ownership
 
-- **Centralized Event Dispatching**: Standard `Instances()` references let native platform bridges immediately resolve the C++ handler instance to emit signal actions when background processes finish.
-- **Resource Conservation**: Consolidating platform components avoids memory leaks, duplicated web renderers, and overlapping ad layers.
+Native callbacks should route to the exact wrapper instance that created the platform ad object.
+
+- Android Java stores `nativePointer` per ad object.
+- C++ validates native pointers with `ActiveRegistry`.
+- iOS delegates keep explicit back-pointers to their owning wrapper.
+- Destructors clear native links before deleting wrapper-owned state.
+
+## 4. Non-Blocking Operations
+
+Ad loading and presentation must not block the Qt UI thread.
+
+- Android UI work runs on Android UI thread.
+- JNI callbacks queue Qt signal emission back to Qt.
+- iOS delegates report through platform callback methods.
+- Desktop no-op calls return immediately.
+
+## Unresolved Questions
+- None.

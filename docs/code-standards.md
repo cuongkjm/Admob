@@ -1,87 +1,53 @@
 # Code Standards & Best Practices
 
-This document outlines the coding standards, patterns, and integration guidelines established for the Qt AdMob integration project.
+## 1. Core Principles
 
-## 1. General Principles
+- Apply YAGNI, KISS, and DRY.
+- Keep platform code behind explicit compile guards.
+- Prefer direct, readable wrappers over speculative abstractions.
+- Preserve one public API across Android, iOS, Windows, macOS desktop, and Linux.
 
-Developers working on this repository should adhere to three core design guidelines:
-- **YAGNI (You Aren't Gonna Need It)**: Implement only the functionality that is strictly requested or necessary. Do not write anticipatory or speculative abstractions.
-- **KISS (Keep It Simple, Stupid)**: Minimize complexity. Write clean, direct code that is easy to read, debug, and maintain.
-- **DRY (Don't Repeat Yourself)**: Extract common logic, reuse coordinate offset handlers, and synchronize lifecycle events consistently across Android and iOS platforms.
+## 2. CMake Standards
 
----
+- Use Qt 6 with CMake only.
+- Expose `QtAdMob::qtadmob` as the public target.
+- Do not use QMake `.pri` or `.pro` integration.
+- Do not set global `CMAKE_CXX_STANDARD`; use `target_compile_features`.
+- Do not use `CMAKE_SOURCE_DIR`, `PROJECT_SOURCE_DIR`, or local absolute paths for library sources.
+- Keep `AUTOMOC` enabled for `Q_OBJECT` wrappers.
+- Enable `OBJCXX` only for iOS.
 
-## 2. JNI Rules & Guidelines (Android Integration)
+## 3. Android JNI Standards
 
-Android integration utilizes Qt Android Extras and Java Native Interface (JNI). To prevent memory leaks, application crashes, or UI threading exceptions, follow these rules:
+- Use Qt 6 `QJniObject` and `QJniEnvironment`.
+- Keep Java helpers under `com.qtadmob`.
+- Pass `long nativePointer` from Java to every native callback.
+- Validate callbacks with `ActiveRegistry` before using native pointers.
+- Dispatch Qt signals through `QMetaObject::invokeMethod(..., Qt::QueuedConnection)`.
+- Java UI and AdMob SDK work must run through `Activity.runOnUiThread()`.
+- Keep `proguard-rules.pro` aligned with JNI class and native method names.
 
-1. **Keep UI Actions on UI Thread**:
-   - AdMob SDK functions (such as modifying layouts, creating `AdView`, and updating visibility) *must* run on Android's main UI thread.
-   - Use `runOnUiThread()` inside Java methods:
-     ```java
-     runOnUiThread(new Runnable() {
-         public void run() {
-             // Safe UI / AdMob operations
-         }
-     });
-     ```
+## 4. iOS Objective-C++ Standards
 
-2. **C++ Native Method Signatures**:
-   - Native declarations in `QtAdMobActivity.java` must match C++ export signatures.
-   - Ensure JNI method names match perfectly:
-     ```java
-     private static native void BannerLoaded();
-     ```
-   - In C++ source code, register or define these native hooks properly under `extern "C"` blocks or static JNI bindings to bridge them into signals.
+- Compile `.mm` files only for iOS targets.
+- Keep Google Mobile Ads iOS SDK paths configurable, never hardcoded to a local machine.
+- Support SDK acquisition through Swift Package Manager, CocoaPods, or `GOOGLE_MOBILE_ADS_IOS_ROOT`.
+- Clear delegate back-pointers before deleting C++ wrapper-owned delegate objects.
+- Keep `-ObjC` link option for Google Mobile Ads categories.
 
-3. **Safe Reference Management**:
-   - Clean up global references when shutting down components.
-   - Guard against null objects when invoking JNI method calls via `QAndroidJniObject`.
+## 5. Desktop No-Op Standards
 
----
+- Windows, macOS desktop, and Linux must compile without Android/iOS SDK headers.
+- Setters should update local Qt property state.
+- Load/show methods should return safely without side effects.
+- Do not emit fake loaded, rewarded, or success signals on desktop.
+- Do not add mock ads or simulated SDK behavior.
 
-## 3. Objective-C++ Integration (iOS Integration)
+## 6. File Size & Structure
 
-On iOS, C++ code (`Qml*.cpp`) cannot directly talk to Objective-C classes. We bridge them using **Objective-C++ (`.mm`) files** and intermediate structural bridge blocks:
+- Keep files focused by ad type or platform role.
+- Consider splitting code files above 200 lines when there is a natural boundary.
+- Do not modularize markdown, config, or generated build artifacts just for line count.
 
-1. **No-ARC compilation constraint**:
-   - The project is compiled with `-fno-objc-arc` (Automatic Reference Counting disabled) in `Admob.pri`.
-   - You **MUST** manage memory manually in Objective-C++ files (`.mm`).
-   - Call `[super dealloc]` or `[obj release]` where appropriate inside delegates to avoid system memory leaks:
-     ```objc
-     -(void) dealloc {
-         [super dealloc];
-         _handler = nil;
-         _request = nil;
-         _bannerView = nil;
-     }
-     ```
-
-2. **Pointer Bridging (`void* self`)**:
-   - Standard C++ classes store a `void*` pointer representing the Objective-C delegate object (`self`).
-   - Use typecasting inside `.mm` files to trigger native Objective-C selectors safely:
-     ```cpp
-     QtAdmobBannerIosDelegate* delegate = (QtAdmobBannerIosDelegate*)self;
-     [delegate loadBanner];
-     ```
-
-3. **Accessing the Root View Controller**:
-   - Qt controls the underlying window structure. Retrieve the active `rootViewController` by enumerating key windows in the application delegate:
-     ```objc
-     UIApplication *application = [UIApplication sharedApplication];
-     NSArray *windows = [application windows];
-     UIViewController * __block rootViewController = nil;
-     [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger idx, BOOL * _Nonnull stop) {
-         rootViewController = [window rootViewController];
-         *stop = (rootViewController != nil);
-     }];
-     ```
-
----
-
-## 4. File Size & Modularization Guidelines
-
-To keep the repository highly maintainable:
-- **Maximum File Size**: Maintain files under **200-300 lines of code** whenever possible.
-- **Single Responsibility Principle**: Ensure each ad type has its own isolated handler (e.g., `QmlBanner`, `QmlInterstitialAd`, `QmlRewardedVideoAd`) that handles setup, loading, presentation, and teardown independently.
-- **No Shared Native State**: Avoid sharing global ad-state variables. Instead, use static `Instances()` methods or object pointers to route specific event responses to their respective target QML handles.
+## Unresolved Questions
+- None.
