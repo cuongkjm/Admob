@@ -1,88 +1,79 @@
 #include "QmlBanner.h"
-#include "QtAdmobBannerIosDelegateImpl.h"
 
-#ifdef __cplusplus
-extern "C" {
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#include "Platform/Ios/QtAdmobBannerIosDelegateImpl.h"
 #endif
 
 #ifdef Q_OS_ANDROID
-// Listener when Java calls onBannerLoaded signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerLoaded(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
+#include "ActiveRegistry.h"
 
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlBanner::Instances()->bannerLoaded();
+#include <QCoreApplication>
+#include <QJniEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+
+namespace {
+template <typename Object, typename Callback>
+void dispatchToQt(jlong nativePointer, Callback callback)
+{
+    if (!ActiveRegistry::contains(nativePointer)) {
+        return;
+    }
+
+    auto* object = reinterpret_cast<Object*>(nativePointer);
+    QPointer<Object> guard(object);
+    QMetaObject::invokeMethod(object, [guard, nativePointer, callback]() {
+        if (!guard || !ActiveRegistry::contains(nativePointer)) {
+            return;
+        }
+        callback(guard.data());
+    }, Qt::QueuedConnection);
+}
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerFailedToLoad(JNIEnv *env, jobject thiz, jint errorCode)
+extern "C" {
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerLoaded(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlBanner::Instances()->bannerFailedToLoad(errorCode);
+    dispatchToQt<QmlBanner>(nativePointer, [](QmlBanner* banner) { emit banner->bannerLoaded(); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerOpened(JNIEnv *env, jobject thiz)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerFailedToLoad(JNIEnv*, jobject, jlong nativePointer, jint errorCode)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlBanner::Instances()->bannerOpened();
+    dispatchToQt<QmlBanner>(nativePointer, [errorCode](QmlBanner* banner) { emit banner->bannerFailedToLoad(errorCode); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerLeftApplication(JNIEnv *env, jobject thiz)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerOpened(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlBanner::Instances()->bannerLeftApplication();
+    dispatchToQt<QmlBanner>(nativePointer, [](QmlBanner* banner) { emit banner->bannerOpened(); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_BannerClosed(JNIEnv *env, jobject thiz)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerLeftApplication(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
+    dispatchToQt<QmlBanner>(nativePointer, [](QmlBanner* banner) { emit banner->bannerLeftApplication(); });
+}
 
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlBanner::Instances()->bannerClosed();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerClosed(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt<QmlBanner>(nativePointer, [](QmlBanner* banner) { emit banner->bannerClosed(); });
+}
 }
 #endif
 
-#ifdef __cplusplus
-}
-#endif
-
-// Global variable to keep instance of class
-static QmlBanner *mQMLBanner = nullptr;
-
-// Implement Instances() method
-QmlBanner* QmlBanner::Instances()
-{
-    return mQMLBanner;
-}
-
-// Implement initialize method
 QmlBanner::QmlBanner()
 {
 #ifdef Q_OS_ANDROID
-    // Update global instance
-    mQMLBanner = this;
+    ActiveRegistry::registerInstance(this);
 
-    // Create Android Activity on Qt
-    QPlatformNativeInterface* interface = QGuiApplication::platformNativeInterface();
-    jobject activity = (jobject)interface->nativeResourceForIntegration("QtActivity");
-    if (activity)
-    {
-        m_Activity = new QAndroidJniObject(activity);
+    QJniObject activity(QNativeInterface::QAndroidApplication::context());
+    if (activity.isValid()) {
+        m_JavaAd = QJniObject("com/qtadmob/AdMobBanner",
+                              "(Landroid/app/Activity;J)V",
+                              activity.object<jobject>(),
+                              reinterpret_cast<jlong>(this));
+        if (m_JavaAd.isValid()) {
+            m_JavaAd.callMethod<void>("initializeBanner");
+        }
     }
-
-    // Call InitializeBanner method of Java
-    m_Activity->callMethod<void>("InitializeBanner");
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
@@ -91,155 +82,181 @@ QmlBanner::QmlBanner()
 #endif
 }
 
-void QmlBanner::setUnitId(const QString& unitId)
+QmlBanner::~QmlBanner()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(unitId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetBannerUnitId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("destroy");
+    }
+    ActiveRegistry::unregisterInstance(this);
+#endif
+
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+    if (m_Admob) {
+        m_Admob->setQtAdmobBannerIos(nullptr);
+        delete m_Admob;
+        m_Admob = nullptr;
+    }
+#endif
+}
+
+void QmlBanner::setUnitId(const QString& unitId)
+{
+    m_UnitId = unitId;
+#ifdef Q_OS_ANDROID
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(unitId);
+        m_JavaAd.callMethod<void>("setBannerUnitId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setUnitId(unitId);
+    if (m_Admob) {
+        m_Admob->setUnitId(unitId);
+    }
 #endif
 }
 
 void QmlBanner::setBannerSize(BannerSizes size)
 {
+    m_BannerSize = size;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call SetBannerSize method of Java
-        m_Activity->callMethod<void>("SetBannerSize", "(I)V", (int)size);
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("setBannerSize", "(I)V", static_cast<jint>(size));
     }
 #elif _WIN32
     Q_UNUSED(size)
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setBannerSize((QtAdmobBannerIosDelegateImpl::BannerSizes) size);
+    if (m_Admob) {
+        m_Admob->setBannerSize(static_cast<QtAdmobBannerIosDelegateImpl::BannerSizes>(size));
+    }
 #endif
 }
 
 int QmlBanner::getAdBannerWidth()
 {
-    int width = 0;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call GetAdBannerWidth method of Java
-        width = m_Activity->callMethod<jint>("GetAdBannerWidth");
+    if (m_JavaAd.isValid()) {
+        return m_JavaAd.callMethod<jint>("getAdBannerWidth");
     }
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    width = m_Admob->getAdBannerWidth();
+    if (m_Admob) {
+        return m_Admob->getAdBannerWidth();
+    }
 #endif
-    return width;
+
+    return 0;
 }
 
 int QmlBanner::getAdBannerHeight()
 {
-    int height = 0;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call GetAdBannerWidth method of Java
-        height = m_Activity->callMethod<jint>("GetAdBannerHeight");
+    if (m_JavaAd.isValid()) {
+        return m_JavaAd.callMethod<jint>("getAdBannerHeight");
     }
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    height = m_Admob->getAdBannerHeight();
+    if (m_Admob) {
+        return m_Admob->getAdBannerHeight();
+    }
 #endif
 
-    return height;
+    return 0;
 }
 
 void QmlBanner::setX(const int &x)
 {
+    m_X = x;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call SetX method of Java
-        m_Activity->callMethod<void>("SetX", "(I)V", x);
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("setX", "(I)V", static_cast<jint>(x));
     }
 #elif _WIN32
     Q_UNUSED(x)
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setX(x);
+    if (m_Admob) {
+        m_Admob->setX(x);
+    }
 #endif
 }
 
 void QmlBanner::setY(const int &y)
 {
+    m_Y = y;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call SetY method of Java
-        m_Activity->callMethod<void>("SetY", "(I)V", y);
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("setY", "(I)V", static_cast<jint>(y));
     }
 #elif _WIN32
     Q_UNUSED(y)
 #endif
+
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setY(y);
+    if (m_Admob) {
+        m_Admob->setY(y);
+    }
 #endif
 }
 
 void QmlBanner::setVisible(const bool &visible)
 {
+    m_Visible = visible;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call SetVisible method of Java
-        m_Activity->callMethod<void>("SetVisible", "(Z)V", visible);
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("setVisible", "(Z)V", static_cast<jboolean>(visible));
     }
 #elif _WIN32
     Q_UNUSED(visible)
 #endif
+
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setVisible(visible);
+    if (m_Admob) {
+        m_Admob->setVisible(visible);
+    }
 #endif
 }
 
 void QmlBanner::setTestDeviceId(const QString &testDeviceId)
 {
+    m_TestDeviceId = testDeviceId;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(testDeviceId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetBannerTestDeviceId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(testDeviceId);
+        m_JavaAd.callMethod<void>("setTestDeviceId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
+
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->setTestDeviceId(testDeviceId);
+    if (m_Admob) {
+        m_Admob->setTestDeviceId(testDeviceId);
+    }
 #endif
 }
 
 void QmlBanner::loadBanner()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call LoadBanner method of Java
-        m_Activity->callMethod<void>("LoadBanner");
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("loadBanner");
         emit widthChanged();
         emit heightChanged();
     }
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    m_Admob->loadBanner();
+    if (m_Admob) {
+        m_Admob->loadBanner();
+    }
 #endif
 }

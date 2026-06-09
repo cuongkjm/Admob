@@ -122,42 +122,42 @@ void QtAdmobRewardVideoDelegateImpl::show() {
 
 void QtAdmobRewardVideoDelegateImpl::rewarded()
 {
-    m_qtAdmobRewardVideoIos->rewarded();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewarded();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoAdClosed()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoAdClosed();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoAdClosed();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoAdFailedToLoad(int errorCode)
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoAdFailedToLoad(errorCode);
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoAdFailedToLoad(errorCode);
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoAdLeftApplication()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoAdLeftApplication();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoAdLeftApplication();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoAdLoaded()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoAdLoaded();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoAdLoaded();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoAdOpened()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoAdOpened();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoAdOpened();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoCompleted()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoCompleted();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoCompleted();
 }
 
 void QtAdmobRewardVideoDelegateImpl::rewardedVideoStarted()
 {
-    m_qtAdmobRewardVideoIos->rewardedVideoStarted();
+    if (m_qtAdmobRewardVideoIos) m_qtAdmobRewardVideoIos->rewardedVideoStarted();
 }
 
 @end

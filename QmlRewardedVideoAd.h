@@ -2,11 +2,9 @@
 #define QMLREWARDEDVIDEOAD_H
 
 #include <QObject>
-#include <QGuiApplication>
+
 #ifdef Q_OS_ANDROID
-#include <QAndroidJniObject>
-#include <QtAndroid>
-#include <qpa/qplatformnativeinterface.h>
+#include <QJniObject>
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -16,11 +14,13 @@ class QtAdmobRewardVideoDelegateImpl;
 class QmlRewardedVideoAd : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString unitId WRITE setUnitId)
-    Q_PROPERTY(QString testDeviceId WRITE setTestDeviceId)
+    Q_PROPERTY(QString unitId MEMBER m_UnitId WRITE setUnitId)
+    Q_PROPERTY(QString testDeviceId MEMBER m_TestDeviceId WRITE setTestDeviceId)
+
 public:
     QmlRewardedVideoAd();
-    static QmlRewardedVideoAd* Instances();
+    ~QmlRewardedVideoAd() override;
+
     void setUnitId(const QString& unitId);
     void setTestDeviceId(const QString &testDeviceId);
 
@@ -39,12 +39,15 @@ public slots:
     void show();
 
 private:
+    QString m_UnitId;
+    QString m_TestDeviceId;
+
 #ifdef Q_OS_ANDROID
-    QAndroidJniObject* m_Activity;
+    QJniObject m_JavaAd;
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-    QtAdmobRewardVideoDelegateImpl* m_QtAdmobRewardVideo;
+    QtAdmobRewardVideoDelegateImpl* m_QtAdmobRewardVideo = nullptr;
 #endif
 };
 

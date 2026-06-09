@@ -1,108 +1,91 @@
 #include "QmlRewardedVideoAd.h"
-#include "QtAdmobRewardVideoDelegateImpl.h"
 
-#ifdef __cplusplus
-extern "C" {
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#include "Platform/Ios/QtAdmobRewardVideoDelegateImpl.h"
 #endif
 
 #ifdef Q_OS_ANDROID
-// Listener when Java calls Rewarded() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_Rewarded(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
+#include "ActiveRegistry.h"
 
-    // Emit to QML app by calling Rewarded signal
-    emit QmlRewardedVideoAd::Instances()->rewarded();
+#include <QCoreApplication>
+#include <QJniEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+
+namespace {
+template <typename Callback>
+void dispatchToQt(jlong nativePointer, Callback callback)
+{
+    if (!ActiveRegistry::contains(nativePointer)) {
+        return;
+    }
+
+    auto* object = reinterpret_cast<QmlRewardedVideoAd*>(nativePointer);
+    QPointer<QmlRewardedVideoAd> guard(object);
+    QMetaObject::invokeMethod(object, [guard, nativePointer, callback]() {
+        if (!guard || !ActiveRegistry::contains(nativePointer)) {
+            return;
+        }
+        callback(guard.data());
+    }, Qt::QueuedConnection);
 }
-// Listener when Java calls RewardedVideoAdClosed() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoAdClosed(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling RewardedVideoAdClosed signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoAdClosed();
 }
-// Listener when Java calls RewardedVideoAdFailedToLoad() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoAdFailedToLoad(JNIEnv *env, jobject thiz, jint errorCode)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoAdFailedToLoad signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoAdFailedToLoad(errorCode);
+extern "C" {
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_Rewarded(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewarded(); });
 }
-// Listener when Java calls RewardedVideoAdLeftApplication() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoAdLeftApplication(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoAdLeftApplication signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoAdLeftApplication();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoAdClosed(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoAdClosed(); });
 }
-// Listener when Java calls RewardedVideoAdLoaded() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoAdLoaded(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoAdLoaded signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoAdLoaded();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoAdFailedToLoad(JNIEnv*, jobject, jlong nativePointer, jint errorCode)
+{
+    dispatchToQt(nativePointer, [errorCode](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoAdFailedToLoad(errorCode); });
 }
-// Listener when Java calls RewardedVideoAdOpened() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoAdOpened(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoAdOpened signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoAdOpened();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoAdLeftApplication(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoAdLeftApplication(); });
 }
-// Listener when Java calls RewardedVideoCompleted() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoCompleted(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoCompleted signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoCompleted();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoAdLoaded(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoAdLoaded(); });
 }
-// Listener when Java calls RewardedVideoStarted() signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_RewardedVideoStarted(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
 
-    // Emit to QML app by calling RewardedVideoStarted signal
-    emit QmlRewardedVideoAd::Instances()->rewardedVideoStarted();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoAdOpened(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoAdOpened(); });
+}
+
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoCompleted(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoCompleted(); });
+}
+
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobRewardedVideo_RewardedVideoStarted(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlRewardedVideoAd* ad) { emit ad->rewardedVideoStarted(); });
+}
 }
 #endif
-
-#ifdef __cplusplus
-}
-#endif
-
-// Global variable to keep instance of class
-static QmlRewardedVideoAd *mQmlRewardedVideoAd = nullptr;
 
 QmlRewardedVideoAd::QmlRewardedVideoAd()
 {
 #ifdef Q_OS_ANDROID
-    // Update global instance
-    mQmlRewardedVideoAd = this;
+    ActiveRegistry::registerInstance(this);
 
-    // Create Android Activity on Qt
-    QPlatformNativeInterface* interface = QGuiApplication::platformNativeInterface();
-    jobject activity = (jobject)interface->nativeResourceForIntegration("QtActivity");
-    if (activity)
-    {
-        m_Activity = new QAndroidJniObject(activity);
+    QJniObject activity(QNativeInterface::QAndroidApplication::context());
+    if (activity.isValid()) {
+        m_JavaAd = QJniObject("com/qtadmob/AdMobRewardedVideo",
+                              "(Landroid/app/Activity;J)V",
+                              activity.object<jobject>(),
+                              reinterpret_cast<jlong>(this));
     }
-
-    // Call InitializeBanner method of Java
-    m_Activity->callMethod<void>("InitializeRewardedVideoAd");
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -111,73 +94,88 @@ QmlRewardedVideoAd::QmlRewardedVideoAd()
 #endif
 }
 
-QmlRewardedVideoAd *QmlRewardedVideoAd::Instances()
+QmlRewardedVideoAd::~QmlRewardedVideoAd()
 {
-    return mQmlRewardedVideoAd;
+#ifdef Q_OS_ANDROID
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("destroy");
+    }
+    ActiveRegistry::unregisterInstance(this);
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    if (m_QtAdmobRewardVideo) {
+        m_QtAdmobRewardVideo->setQtAdmobRewardVideoIos(nullptr);
+        delete m_QtAdmobRewardVideo;
+        m_QtAdmobRewardVideo = nullptr;
+    }
+#endif
 }
 
 void QmlRewardedVideoAd::setUnitId(const QString &unitId)
 {
+    m_UnitId = unitId;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(unitId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetRewardedVideoAdUnitId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(unitId);
+        m_JavaAd.callMethod<void>("setUnitId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_QtAdmobRewardVideo->setUnitId(unitId);
+    if (m_QtAdmobRewardVideo) {
+        m_QtAdmobRewardVideo->setUnitId(unitId);
+    }
 #endif
 }
 
 void QmlRewardedVideoAd::setTestDeviceId(const QString &testDeviceId)
 {
+    m_TestDeviceId = testDeviceId;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(testDeviceId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetRewardedVideoTestDeviceId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(testDeviceId);
+        m_JavaAd.callMethod<void>("setTestDeviceId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_QtAdmobRewardVideo->setTestDeviceId(testDeviceId);
+    if (m_QtAdmobRewardVideo) {
+        m_QtAdmobRewardVideo->setTestDeviceId(testDeviceId);
+    }
 #endif
 }
 
 void QmlRewardedVideoAd::loadRewardedVideoAd()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call LoadBanner method of Java
-        m_Activity->callMethod<void>("LoadRewardedVideoAd");
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("loadRewardedVideoAd");
     }
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_QtAdmobRewardVideo->loadRewardedVideoAd();
+    if (m_QtAdmobRewardVideo) {
+        m_QtAdmobRewardVideo->loadRewardedVideoAd();
+    }
 #endif
 }
 
 void QmlRewardedVideoAd::show()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call LoadBanner method of Java
-        m_Activity->callMethod<void>("ShowRewardedVideoAd");
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("show");
     }
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_QtAdmobRewardVideo->show();
+    if (m_QtAdmobRewardVideo) {
+        m_QtAdmobRewardVideo->show();
+    }
 #endif
 }

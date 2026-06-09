@@ -125,28 +125,28 @@ QtAdmobInterstitialIosDelegateImpl::QtAdmobInterstitialIosDelegateImpl() {
     self = [[QtAdmobInterstitialIosDelegate alloc] init:this];
 }
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdLeftApplication() { 
-    m_QtAdmobInterstitialIos->interstitialAdLeftApplication();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdLeftApplication() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLeftApplication();
 }
 
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdOpened() { 
-    m_QtAdmobInterstitialIos->interstitialAdOpened();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdOpened() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdOpened();
 }
 
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdFailedToLoad(int errorCode) { 
-    m_QtAdmobInterstitialIos->interstitialAdFailedToLoad(errorCode);
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdFailedToLoad(int errorCode) {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdFailedToLoad(errorCode);
 }
 
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdClosed() { 
-    m_QtAdmobInterstitialIos->interstitialAdClosed();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdClosed() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdClosed();
 }
 
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdLoaded() { 
-    m_QtAdmobInterstitialIos->interstitialAdLoaded();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdLoaded() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLoaded();
 }
 
 @end

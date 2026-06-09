@@ -209,27 +209,27 @@ void QtAdmobBannerIosDelegateImpl::setVisible(const bool &visible)
 
 void QtAdmobBannerIosDelegateImpl::bannerLoaded()
 {
-    m_QtAdmobBannerIos->bannerLoaded();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerLoaded();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerFailedToLoad(int errorCode)
 {
-    m_QtAdmobBannerIos->bannerFailedToLoad(errorCode);
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerFailedToLoad(errorCode);
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerOpened()
 {
-    m_QtAdmobBannerIos->bannerOpened();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerOpened();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerLeftApplication()
 {
-    m_QtAdmobBannerIos->bannerLeftApplication();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerLeftApplication();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerClosed()
 {
-    m_QtAdmobBannerIos->bannerClosed();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerClosed();
 }
 
 void QtAdmobBannerIosDelegateImpl::setQtAdmobBannerIos(QmlBanner *QtAdmobBannerIos)
