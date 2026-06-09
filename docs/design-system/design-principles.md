@@ -31,6 +31,7 @@ Native callbacks should route to the exact wrapper instance that created the pla
 - Android Java stores `nativePointer` per ad object.
 - C++ validates native pointers with `ActiveRegistry`.
 - iOS delegates keep explicit back-pointers to their owning wrapper.
+- iOS full-screen ads use `GADFullScreenContentDelegate` callbacks; banner ads use `GADBannerViewDelegate`.
 - Destructors clear native links before deleting wrapper-owned state.
 
 ## 4. Non-Blocking Operations

@@ -17,7 +17,7 @@
 - Added Android and iOS platform bridges for Google Mobile Ads.
 
 ### Milestone 2: Qt 6 CMake Modernization
-- Replaced QMake integration with root `CMakeLists.txt`.
+- Standardized integration through root `CMakeLists.txt`.
 - Added `QtAdMob::qtadmob` target for submodule consumption.
 - Migrated Android JNI wrappers to Qt 6 `QJniObject`.
 - Replaced Android singleton callback routing with native-pointer callbacks.
@@ -29,17 +29,25 @@
 - Desktop platforms compile public API as no-op because AdMob has no desktop SDK.
 - Documented official Google Mobile Ads iOS SDK acquisition paths.
 
+### Milestone 4: iOS SDK 13.5 Modernization
+- Modernized iOS interstitial/rewarded APIs with `GADInterstitialAd` and `GADRewardedAd`.
+- Adopted `GADFullScreenContentDelegate` and `GADBannerViewDelegate` callback paths.
+- Validated iOS build with Google Mobile Ads iOS SDK `13.5.0` via `GOOGLE_MOBILE_ADS_IOS_ROOT`.
+- Tracked remaining non-blocking banner warnings for deprecated `UIApplication.windows` and `statusBarFrame`.
+
+### Milestone 5: Build Validation
+- Validated macOS desktop CMake build with no-op ad methods.
+- Validated Android `arm64-v8a` build with Qt 6 JNI and `com.qtadmob` package sources.
+- Validated iOS CMake build with manual Google Mobile Ads iOS SDK path.
+
 ## 3. Future Roadmap
 
-### Phase 1: Modernize iOS SDK APIs
-- Replace legacy iOS rewarded/interstitial APIs with current Google Mobile Ads iOS SDK classes.
-- Revalidate iOS build with a real `GoogleMobileAds.xcframework` path.
-
-### Phase 2: Consumer App Packaging Test
+### Phase 1: Consumer App Packaging Test
 - Validate Android Gradle packaging inside a real Qt app target.
 - Confirm `QT_ANDROID_PACKAGE_SOURCE_DIR` merge behavior when consumer app already has package sources.
 
-### Phase 3: Banner Improvements
+### Phase 2: Banner Improvements
+- Replace deprecated iOS banner positioning APIs with scene/safe-area aware APIs.
 - Add adaptive banner sizing when needed by apps.
 - Recheck orientation and safe-area behavior across Android and iOS.
 

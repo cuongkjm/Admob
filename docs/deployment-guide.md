@@ -78,6 +78,8 @@ set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
 
 Missing SDK should fail iOS compile/link clearly because real iOS ads require Google's framework.
 
+Current iOS bridge is validated against Google Mobile Ads iOS SDK `13.5.0`. Non-blocking compile warnings remain for deprecated `UIApplication.windows` and `statusBarFrame` in `Platform/Ios/QtAdmobBannerIosDelegate.mm`.
+
 ## 5. Validation Commands
 
 ### macOS Desktop

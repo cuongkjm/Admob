@@ -49,11 +49,19 @@ Qt/QML developers who want one declarative API for mobile ads while keeping desk
 - **NF-DEV-01**: Expose one namespaced target: `QtAdMob::qtadmob`.
 - **NF-DEV-02**: Android consumers call `qtadmob_configure_android_target(myapp)` after linking.
 - **NF-DEV-03**: iOS consumers provide Google Mobile Ads SDK through SPM, CocoaPods, or `GOOGLE_MOBILE_ADS_IOS_ROOT`; manual SDK `13.5.0` is validated.
+- **NF-DEV-04**: Android consumers can merge QtAdMob package sources through `qtadmob_configure_android_target(myapp)`.
 
 ### Safety
 - **NF-SAFE-01**: Android callbacks validate native pointers before dispatch.
 - **NF-SAFE-02**: Signal emissions from JNI are queued back to Qt.
 - **NF-SAFE-03**: Destructors detach native callbacks before wrapper deletion.
+
+## 6. Validation State
+
+- macOS desktop build passed with no-op methods.
+- Android `arm64-v8a` build passed with Qt 6 JNI and `com.qtadmob` package sources.
+- iOS build passed with Google Mobile Ads iOS SDK `13.5.0` from `GOOGLE_MOBILE_ADS_IOS_ROOT`.
+- Non-blocking iOS warnings remain for deprecated `UIApplication.windows` and `statusBarFrame` in banner delegate code.
 
 ## Unresolved Questions
 - None.

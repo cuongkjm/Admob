@@ -76,6 +76,20 @@ set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
 
 If the SDK is missing, iOS builds should fail clearly at compile/link time instead of silently disabling real ads.
 
+Current iOS bridge uses Google Mobile Ads iOS SDK `13.5.0` APIs: `GADInterstitialAd`, `GADRewardedAd`, `GADFullScreenContentDelegate`, and `GADBannerViewDelegate`.
+
+---
+
+## Validation Status
+
+Validated builds from current implementation work:
+
+- macOS desktop CMake build passes with no-op ad methods.
+- Android `arm64-v8a` CMake build passes with Qt 6 JNI code and `com.qtadmob` package sources.
+- iOS CMake build passes with `GOOGLE_MOBILE_ADS_IOS_ROOT=/Users/cuongkjm/cuongkjm/Apps/GoogleMobileAdsSdkiOS-13.5.0`.
+
+Known non-blocking iOS warnings remain in `Platform/Ios/QtAdmobBannerIosDelegate.mm` for deprecated `UIApplication.windows` and `statusBarFrame`.
+
 ---
 
 ## Quick Start (QML Declarative Syntax)

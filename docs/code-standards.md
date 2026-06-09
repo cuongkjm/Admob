@@ -11,7 +11,7 @@
 
 - Use Qt 6 with CMake only.
 - Expose `QtAdMob::qtadmob` as the public target.
-- Do not use QMake `.pri` or `.pro` integration.
+- Use CMake target integration only.
 - Do not set global `CMAKE_CXX_STANDARD`; use `target_compile_features`.
 - Do not use `CMAKE_SOURCE_DIR`, `PROJECT_SOURCE_DIR`, or local absolute paths for library sources.
 - Keep `AUTOMOC` enabled for `Q_OBJECT` wrappers.
@@ -32,6 +32,8 @@
 - Compile `.mm` files only for iOS targets.
 - Keep Google Mobile Ads iOS SDK paths configurable, never hardcoded to a local machine.
 - Support SDK acquisition through Swift Package Manager, CocoaPods, or `GOOGLE_MOBILE_ADS_IOS_ROOT`.
+- Use Google Mobile Ads iOS SDK `13.5.0` APIs: `GADInterstitialAd`, `GADRewardedAd`, `GADFullScreenContentDelegate`, and `GADBannerViewDelegate`.
+- Track known non-blocking deprecation warnings in banner positioning code until safe-area modernization is implemented.
 - Clear delegate back-pointers before deleting C++ wrapper-owned delegate objects.
 - Keep `-ObjC` link option for Google Mobile Ads categories.
 

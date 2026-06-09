@@ -41,6 +41,8 @@ The iOS path compiles Objective-C++ `.mm` delegate files only for iOS builds.
 - Delegates call back to the owning wrapper instance.
 - Destructors clear delegate back-pointers before deletion.
 - Google Mobile Ads SDK must be provided by SPM, CocoaPods, or `GOOGLE_MOBILE_ADS_IOS_ROOT`.
+- Interstitial and rewarded delegates use SDK `13.5.0` `GADInterstitialAd`, `GADRewardedAd`, and `GADFullScreenContentDelegate` APIs.
+- Banner delegate uses `GADBannerViewDelegate`; deprecated `UIApplication.windows` and `statusBarFrame` warnings are known and non-blocking.
 
 ## 5. Desktop Behavior
 
@@ -58,6 +60,11 @@ AdMob has no official desktop SDK. QtAdMob keeps the public API available on Win
 - `AUTOMOC` handles `Q_OBJECT` wrappers.
 - `OBJCXX` and iOS sources are enabled only when `IOS` is true.
 - Android package sources are configured only through `qtadmob_configure_android_target()`.
+
+## 7. Validation State
+
+- macOS desktop, Android `arm64-v8a`, and iOS CMake builds passed in previous validation.
+- iOS validation used `/Users/cuongkjm/cuongkjm/Apps/GoogleMobileAdsSdkiOS-13.5.0` as `GOOGLE_MOBILE_ADS_IOS_ROOT`.
 
 ## Unresolved Questions
 - None.
