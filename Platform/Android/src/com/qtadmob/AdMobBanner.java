@@ -65,7 +65,7 @@ public class AdMobBanner {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (AdMobBanner.this.adUnitId != null && !AdMobBanner.this.adUnitId.equals(adUnitId)) {
+                if (adView != null && (AdMobBanner.this.adUnitId == null || !AdMobBanner.this.adUnitId.equals(adUnitId))) {
                     destroyAdView();
                 }
                 AdMobBanner.this.adUnitId = adUnitId;
@@ -133,15 +133,13 @@ public class AdMobBanner {
     }
 
     private void ensureAdView() {
-        if (nativePointer.get() == 0 || adView != null) {
+        if (nativePointer.get() == 0 || adView != null || adUnitId == null || adUnitId.isEmpty()) {
             return;
         }
 
         adView = new AdView(activity);
         adView.setAdSize(adSize);
-        if (adUnitId != null) {
-            adView.setAdUnitId(adUnitId);
-        }
+        adView.setAdUnitId(adUnitId);
         adView.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
         adView.setAdListener(new AdListener() {
             @Override
