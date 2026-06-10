@@ -16,11 +16,6 @@ class QmlBanner : public QQuickItem
     Q_OBJECT
     Q_PROPERTY(QString unitId MEMBER m_UnitId WRITE setUnitId)
     Q_PROPERTY(BannerSizes bannerSize MEMBER m_BannerSize WRITE setBannerSize)
-    Q_PROPERTY(int width READ getAdBannerWidth NOTIFY widthChanged)
-    Q_PROPERTY(int height READ getAdBannerHeight NOTIFY heightChanged)
-    Q_PROPERTY(int x MEMBER m_X WRITE setX)
-    Q_PROPERTY(int y MEMBER m_Y WRITE setY)
-    Q_PROPERTY(bool visible MEMBER m_Visible WRITE setVisible)
     Q_PROPERTY(QString testDeviceId MEMBER m_TestDeviceId WRITE setTestDeviceId)
 
 public:
@@ -46,9 +41,6 @@ public:
 
     int getAdBannerWidth();
     int getAdBannerHeight();
-    void setX(const int& x);
-    void setY(const int& y);
-    void setVisible(const bool &visible);
     void setTestDeviceId(const QString &testDeviceId);
 
 public slots:
@@ -63,12 +55,13 @@ signals:
     void widthChanged();
     void heightChanged();
 
+private slots:
+    void syncGeometry();
+    void syncVisibility();
+
 private:
     QString m_UnitId;
     BannerSizes m_BannerSize = BANNER;
-    int m_X = 0;
-    int m_Y = 0;
-    bool m_Visible = true;
     QString m_TestDeviceId;
 
 #ifdef Q_OS_ANDROID

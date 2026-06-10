@@ -11,8 +11,33 @@
 #include <QJniEnvironment>
 #include <QMetaObject>
 #include <QPointer>
+#include <QSize>
+#include <QtGlobal>
 
 namespace {
+QSize bannerSizeFor(QmlBanner::BannerSizes size)
+{
+    switch (size) {
+    case QmlBanner::FLUID:
+    case QmlBanner::BANNER:
+    case QmlBanner::SEARCH:
+    case QmlBanner::SMART_BANNER:
+        return {320, 50};
+    case QmlBanner::FULL_BANNER:
+        return {468, 60};
+    case QmlBanner::LARGE_BANNER:
+        return {320, 100};
+    case QmlBanner::LEADERBOARD:
+        return {728, 90};
+    case QmlBanner::MEDIUM_RECTANGLE:
+        return {300, 250};
+    case QmlBanner::WIDE_SKYSCRAPER:
+        return {160, 600};
+    }
+
+    return {320, 50};
+}
+
 template <typename Object, typename Callback>
 void dispatchToQt(jlong nativePointer, Callback callback)
 {
@@ -61,6 +86,8 @@ JNIEXPORT void JNICALL Java_com_qtadmob_AdMobBanner_BannerClosed(JNIEnv*, jobjec
 
 QmlBanner::QmlBanner()
 {
+    setSize(bannerSizeFor(m_BannerSize));
+
 #ifdef Q_OS_ANDROID
     ActiveRegistry::registerInstance(this);
 
@@ -72,8 +99,14 @@ QmlBanner::QmlBanner()
                               reinterpret_cast<jlong>(this));
         if (m_JavaAd.isValid()) {
             m_JavaAd.callMethod<void>("initializeBanner");
+            syncGeometry();
+            syncVisibility();
         }
     }
+
+    connect(this, &QQuickItem::xChanged, this, &QmlBanner::syncGeometry);
+    connect(this, &QQuickItem::yChanged, this, &QmlBanner::syncGeometry);
+    connect(this, &QQuickItem::visibleChanged, this, &QmlBanner::syncVisibility);
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
@@ -122,6 +155,8 @@ void QmlBanner::setUnitId(const QString& unitId)
 void QmlBanner::setBannerSize(BannerSizes size)
 {
     m_BannerSize = size;
+    setSize(bannerSizeFor(size));
+    syncGeometry();
 #ifdef Q_OS_ANDROID
     if (m_JavaAd.isValid()) {
         m_JavaAd.callMethod<void>("setBannerSize", "(I)V", static_cast<jint>(size));
@@ -171,56 +206,34 @@ int QmlBanner::getAdBannerHeight()
     return 0;
 }
 
-void QmlBanner::setX(const int &x)
+void QmlBanner::syncGeometry()
 {
-    m_X = x;
 #ifdef Q_OS_ANDROID
     if (m_JavaAd.isValid()) {
-        m_JavaAd.callMethod<void>("setX", "(I)V", static_cast<jint>(x));
+        m_JavaAd.callMethod<void>("setX", "(I)V", static_cast<jint>(qRound(x())));
+        m_JavaAd.callMethod<void>("setY", "(I)V", static_cast<jint>(qRound(y())));
     }
-#elif _WIN32
-    Q_UNUSED(x)
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
     if (m_Admob) {
-        m_Admob->setX(x);
+        m_Admob->setX(qRound(x()));
+        m_Admob->setY(qRound(y()));
     }
 #endif
 }
 
-void QmlBanner::setY(const int &y)
+void QmlBanner::syncVisibility()
 {
-    m_Y = y;
 #ifdef Q_OS_ANDROID
     if (m_JavaAd.isValid()) {
-        m_JavaAd.callMethod<void>("setY", "(I)V", static_cast<jint>(y));
+        m_JavaAd.callMethod<void>("setVisible", "(Z)V", static_cast<jboolean>(isVisible()));
     }
-#elif _WIN32
-    Q_UNUSED(y)
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
     if (m_Admob) {
-        m_Admob->setY(y);
-    }
-#endif
-}
-
-void QmlBanner::setVisible(const bool &visible)
-{
-    m_Visible = visible;
-#ifdef Q_OS_ANDROID
-    if (m_JavaAd.isValid()) {
-        m_JavaAd.callMethod<void>("setVisible", "(Z)V", static_cast<jboolean>(visible));
-    }
-#elif _WIN32
-    Q_UNUSED(visible)
-#endif
-
-#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
-    if (m_Admob) {
-        m_Admob->setVisible(visible);
+        m_Admob->setVisible(isVisible());
     }
 #endif
 }
