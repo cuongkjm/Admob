@@ -28,6 +28,10 @@ target_sources(qtadmob
 target_include_directories(qtadmob PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
 target_link_libraries(qtadmob PUBLIC Qt6::Core Qt6::Gui Qt6::Quick)
 
+set(qtadmob_qml_import_dir "${CMAKE_BINARY_DIR}/AdMob")
+file(MAKE_DIRECTORY "${qtadmob_qml_import_dir}")
+file(WRITE "${qtadmob_qml_import_dir}/qmldir" "module AdMob\n")
+
 if(IOS)
     set(GOOGLE_MOBILE_ADS_IOS_ROOT "" CACHE PATH "Path to GoogleMobileAds iOS framework root")
 
