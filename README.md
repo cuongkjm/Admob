@@ -37,20 +37,34 @@ Desktop no-op methods do not emit fake success callbacks.
 
 ## CMake Integration
 
-Add this repository as a CMake submodule or FetchContent dependency, then link the target:
+Add this repository as a CMake submodule or FetchContent dependency, link the target, then call the platform helpers on your Qt app target:
 
 ```cmake
 add_subdirectory(path/to/Admob)
 
-qt_add_executable(myapp main.cpp)
+qt_add_executable(myapp
+    main.cpp
+    qml.qrc
+)
+
 target_link_libraries(myapp PRIVATE QtAdMob::qtadmob)
 
+if(ANDROID)
+    set_property(TARGET myapp PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
+endif()
+
+if(IOS)
+    set(QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON)
+    set(QTADMOB_IOS_APPLICATION_ID "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy")
+endif()
+
 qtadmob_configure_android_target(myapp)
+qtadmob_configure_ios_target(myapp)
 ```
 
-`qtadmob_configure_android_target()` is a no-op outside Android. On Android it provides the Java package sources and `proguard-rules.pro` to Qt Android deployment through `QT_ANDROID_PACKAGE_SOURCE_DIR`.
+`qtadmob_configure_android_target()` is a no-op outside Android. On Android it merges QtAdMob Java package sources and `proguard-rules.pro` into the app `QT_ANDROID_PACKAGE_SOURCE_DIR`. If your app already has an `android/` package source directory, set it before calling the helper.
 
-Android apps still need an AdMob application id in their manifest metadata:
+Android apps still need an AdMob application id in manifest metadata:
 
 ```xml
 <meta-data
@@ -58,7 +72,7 @@ Android apps still need an AdMob application id in their manifest metadata:
     android:value="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy" />
 ```
 
-No custom `QtActivity` subclass is required.
+No custom `QtActivity` subclass is required. QtAdMob provides helper classes under `com.qtadmob`.
 
 ## Google Mobile Ads iOS SDK
 
@@ -73,6 +87,8 @@ For direct iOS CMake builds, pass a local path when it is not already provided b
 ```cmake
 set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
 ```
+
+Set `QTADMOB_IOS_APPLICATION_ID` before `qtadmob_configure_ios_target(myapp)`. The helper writes `GADApplicationIdentifier` into the generated app `Info.plist` for Xcode builds. If you provide your own launch screen, set `QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON` before finalizing the target, as the working TestAdmob sample does.
 
 If the SDK is missing, iOS builds should fail clearly at compile/link time instead of silently disabling real ads.
 
@@ -94,49 +110,81 @@ Known non-blocking iOS warnings remain in `Platform/Ios/QtAdmobBannerIosDelegate
 
 ## Quick Start (QML Declarative Syntax)
 
-### Banner Ad Example
+Register the QML types once in your C++ entry point:
+
+```cpp
+qmlRegisterType<QmlBanner>("AdMob", 1, 0, "QmlBanner");
+qmlRegisterType<QmlInterstitialAd>("AdMob", 1, 0, "QmlInterstitialAd");
+qmlRegisterType<QmlRewardedVideoAd>("AdMob", 1, 0, "QmlRewardedVideoAd");
+```
+
+Use `import AdMob 1.0` in QML. Load ads first, then show full-screen formats only after their loaded signal enables UI:
 
 ```qml
-import QtQuick 2.12
+import QtQuick
+import QtQuick.Controls
 import AdMob 1.0
 
 Item {
-    width: 640
-    height: 480
+    readonly property bool isIos: Qt.platform.os === "ios"
+    readonly property string bannerId: isIos ? "ca-app-pub-3940256099942544/2934735716" : "ca-app-pub-3940256099942544/6300978111"
+    readonly property string interstitialId: isIos ? "ca-app-pub-3940256099942544/4411468910" : "ca-app-pub-3940256099942544/1033173712"
+    readonly property string rewardedId: isIos ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917"
 
     QmlBanner {
         id: banner
-        unitId: "ca-app-pub-3940256099942544/6300978111"
+        unitId: bannerId
         bannerSize: QmlBanner.BANNER
         visible: true
-        x: 0
-        y: parent.height - height
-
-        Component.onCompleted: loadBanner()
-
-        onBannerLoaded: console.log("Banner loaded")
-        onBannerFailedToLoad: console.log("Failed to load banner: " + errorCode)
+        testDeviceId: "41E647017EBEBB0650DAE627391B7A43"
     }
-}
-```
 
-### Rewarded Video Example
+    QmlInterstitialAd {
+        id: interstitial
+        unitId: interstitialId
+        testDeviceId: banner.testDeviceId
+        onInterstitialAdLoaded: showInterstitialButton.enabled = true
+    }
 
-```qml
-import QtQuick 2.12
-
-Item {
     QmlRewardedVideoAd {
-        id: rewardedVideo
-        unitId: "ca-app-pub-3940256099942544/5224354917"
-
-        onRewardedVideoAdLoaded: show()
+        id: rewarded
+        unitId: rewardedId
+        testDeviceId: banner.testDeviceId
+        onRewardedVideoAdLoaded: showRewardedButton.enabled = true
         onRewarded: console.log("Grant reward")
     }
 
-    Component.onCompleted: rewardedVideo.loadRewardedVideoAd()
+    Button {
+        id: showInterstitialButton
+        enabled: false
+        text: "Show interstitial"
+        onClicked: {
+            enabled = false
+            interstitial.showInterstitialAd()
+        }
+    }
+
+    Button {
+        id: showRewardedButton
+        enabled: false
+        text: "Show rewarded"
+        onClicked: {
+            enabled = false
+            rewarded.show()
+        }
+    }
+
+    Component.onCompleted: {
+        banner.loadBanner()
+        interstitial.loadInterstitialAd()
+        rewarded.loadRewardedVideoAd()
+    }
 }
 ```
+
+Sample app id for iOS: `ca-app-pub-3940256099942544~1458002511`. Sample app id for Android manifest: use Google's Android test app id, for example `ca-app-pub-3940256099942544~3347511713` as in TestAdmob.
+
+Desktop builds keep the same QML source compilable, but ad methods are no-op and do not emit fake success callbacks.
 
 ---
 

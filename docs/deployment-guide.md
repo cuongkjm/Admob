@@ -4,18 +4,34 @@ This guide covers QtAdMob integration as a Qt 6 CMake submodule for Android, iOS
 
 ## 1. CMake Setup
 
-Add the repository to your app build and link the target:
+Add the repository to your app build, link the target, then call the platform helpers on your Qt app target:
 
 ```cmake
 add_subdirectory(path/to/Admob)
 
-qt_add_executable(myapp main.cpp)
+qt_add_executable(myapp
+    main.cpp
+    qml.qrc
+)
+
 target_link_libraries(myapp PRIVATE QtAdMob::qtadmob)
 
+if(ANDROID)
+    set_property(TARGET myapp PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
+endif()
+
+if(IOS)
+    set(QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON)
+    set(QTADMOB_IOS_APPLICATION_ID "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy")
+endif()
+
 qtadmob_configure_android_target(myapp)
+qtadmob_configure_ios_target(myapp)
 ```
 
-`qtadmob_configure_android_target()` is a no-op outside Android. On Android it sets `QT_ANDROID_PACKAGE_SOURCE_DIR` so Qt deployment sees the Java sources and `proguard-rules.pro`.
+`qtadmob_configure_android_target()` is a no-op outside Android. On Android it merges QtAdMob Java sources and `proguard-rules.pro` into the app `QT_ANDROID_PACKAGE_SOURCE_DIR`. If the app already has an `android/` package source directory, set it before calling the helper.
+
+`qtadmob_configure_ios_target()` is a no-op outside iOS Xcode builds. On iOS it requires `QTADMOB_IOS_APPLICATION_ID` and writes `GADApplicationIdentifier` into the generated app `Info.plist`.
 
 ## 2. Platform Behavior
 
@@ -41,7 +57,7 @@ Add the AdMob application id inside the app manifest:
     android:value="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy" />
 ```
 
-No custom `QtActivity` subclass is required. QtAdMob provides Java helper classes under `com.qtadmob`.
+The working TestAdmob sample uses Google sample app id `ca-app-pub-3940256099942544~3347511713`. No custom `QtActivity` subclass is required. QtAdMob provides helper classes under `com.qtadmob`.
 
 ### Gradle Dependency
 
@@ -57,12 +73,21 @@ Use the version required by your app policy and Google Play requirements.
 
 ## 4. iOS Deployment
 
-Add `GADApplicationIdentifier` to the app `Info.plist`:
+Set the app id before calling the helper:
+
+```cmake
+set(QTADMOB_IOS_APPLICATION_ID "ca-app-pub-3940256099942544~1458002511")
+qtadmob_configure_ios_target(myapp)
+```
+
+The helper generates an app `Info.plist` with:
 
 ```xml
 <key>GADApplicationIdentifier</key>
 <string>ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy</string>
 ```
+
+If your app owns its launch screen, set `QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON` before finalizing the Qt target. The working TestAdmob sample does this before `qt_finalize_executable()`.
 
 Install Google Mobile Ads iOS SDK using one of these official paths. This library is validated with manual Google Mobile Ads iOS SDK `13.5.0`.
 
@@ -80,7 +105,49 @@ Missing SDK should fail iOS compile/link clearly because real iOS ads require Go
 
 Current iOS bridge is validated against Google Mobile Ads iOS SDK `13.5.0`. Non-blocking compile warnings remain for deprecated `UIApplication.windows` and `statusBarFrame` in `Platform/Ios/QtAdmobBannerIosDelegate.mm`.
 
-## 5. Validation Commands
+## 5. QML Usage
+
+Register QML types in C++ before loading QML:
+
+```cpp
+qmlRegisterType<QmlBanner>("AdMob", 1, 0, "QmlBanner");
+qmlRegisterType<QmlInterstitialAd>("AdMob", 1, 0, "QmlInterstitialAd");
+qmlRegisterType<QmlRewardedVideoAd>("AdMob", 1, 0, "QmlRewardedVideoAd");
+```
+
+Import and use the objects from QML:
+
+```qml
+import QtQuick
+import QtQuick.Controls
+import AdMob 1.0
+
+Item {
+    readonly property bool isIos: Qt.platform.os === "ios"
+    readonly property string bannerId: isIos ? "ca-app-pub-3940256099942544/2934735716" : "ca-app-pub-3940256099942544/6300978111"
+    readonly property string interstitialId: isIos ? "ca-app-pub-3940256099942544/4411468910" : "ca-app-pub-3940256099942544/1033173712"
+    readonly property string rewardedId: isIos ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917"
+
+    QmlBanner { id: banner; unitId: bannerId; bannerSize: QmlBanner.BANNER; visible: true; testDeviceId: "41E647017EBEBB0650DAE627391B7A43" }
+    QmlInterstitialAd { id: interstitial; unitId: interstitialId; testDeviceId: banner.testDeviceId; onInterstitialAdLoaded: showInterstitial.enabled = true }
+    QmlRewardedVideoAd { id: rewarded; unitId: rewardedId; testDeviceId: banner.testDeviceId; onRewardedVideoAdLoaded: showRewarded.enabled = true; onRewarded: console.log("Grant reward") }
+
+    Button { id: showInterstitial; enabled: false; text: "Show interstitial"; onClicked: { enabled = false; interstitial.showInterstitialAd() } }
+    Button { id: showRewarded; enabled: false; text: "Show rewarded"; onClicked: { enabled = false; rewarded.show() } }
+
+    Component.onCompleted: {
+        banner.loadBanner()
+        interstitial.loadInterstitialAd()
+        rewarded.loadRewardedVideoAd()
+    }
+}
+```
+
+Use Google sample ad ids during development. Load each ad on startup or before needed. Show interstitial/rewarded only after loaded callbacks. Set `testDeviceId` to your device id for test traffic.
+
+Desktop builds keep shared QML compilable. Ad methods are no-op and do not emit fake success callbacks.
+
+## 6. Validation Commands
 
 ### macOS Desktop
 
