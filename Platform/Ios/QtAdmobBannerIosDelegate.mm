@@ -2,16 +2,26 @@
 #include "QmlBanner.h"
 
 namespace {
-UIViewController* rootViewController()
+UIWindow* foregroundWindow()
 {
     UIApplication *application = [UIApplication sharedApplication];
-    NSArray *windows = [application windows];
-    UIViewController * __block controller = nil;
-    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-        controller = [window rootViewController];
-        *stop = (controller != nil);
-    }];
-    return controller;
+    UIWindow *keyWindow = application.keyWindow;
+    if (keyWindow && !keyWindow.hidden) {
+        return keyWindow;
+    }
+
+    for (UIWindow *window in application.windows) {
+        if (!window.hidden) {
+            return window;
+        }
+    }
+
+    return nil;
+}
+
+UIViewController* rootViewController()
+{
+    return foregroundWindow().rootViewController;
 }
 }
 
@@ -23,10 +33,15 @@ UIViewController* rootViewController()
     if (self)
     {
         _handler = handler;
+        self.x = 0;
+        self.y = 0;
         _bannerView = [[GADBannerView alloc] initWithAdSize:GADAdSizeLargeBanner];
         _bannerView.delegate = self;
         _bannerView.rootViewController = rootViewController();
-        [_bannerView.rootViewController.view addSubview:_bannerView];
+        UIWindow *window = foregroundWindow();
+        if (window) {
+            [window addSubview:_bannerView];
+        }
         _request = [GADRequest request];
     }
     return self;
@@ -44,9 +59,21 @@ UIViewController* rootViewController()
 
 -(void) setPosition: (const int &) x : (const int &) y
 {
-    CGFloat yOffset = [UIApplication sharedApplication].statusBarFrame.size.height;
+    self.x = x;
+    self.y = y;
+
     CGRect frame = _bannerView.frame;
-    frame.origin = CGPointMake(x, y + yOffset);
+    UIView *container = _bannerView.superview ?: foregroundWindow();
+    if (!container) {
+        frame.origin = CGPointMake(x, y);
+        _bannerView.frame = frame;
+        return;
+    }
+
+    CGFloat maxX = container.bounds.size.width - frame.size.width;
+    CGFloat maxY = container.bounds.size.height - container.safeAreaInsets.bottom - frame.size.height;
+    CGFloat centeredX = (container.bounds.size.width - frame.size.width) / 2;
+    frame.origin = CGPointMake(MAX(0, MIN(centeredX, maxX)), maxY);
     _bannerView.frame = frame;
 }
 
@@ -57,6 +84,14 @@ UIViewController* rootViewController()
 
 -(void) loadBanner
 {
+    if (!_bannerView.rootViewController) {
+        _bannerView.rootViewController = rootViewController();
+    }
+    UIWindow *window = foregroundWindow();
+    if (window && !_bannerView.superview) {
+        [window addSubview:_bannerView];
+    }
+    [self setPosition:self.x :self.y];
     [_bannerView loadRequest:_request];
 }
 
@@ -93,6 +128,7 @@ UIViewController* rootViewController()
     }
 
     _bannerView.adSize = newSize;
+    [self setPosition:self.x :self.y];
 }
 
 - (int) getAdBannerWidth
@@ -118,7 +154,13 @@ UIViewController* rootViewController()
 
 - (void)bannerViewDidReceiveAd:(nonnull GADBannerView *)bannerView
 {
-    Q_UNUSED(bannerView);
+    UIWindow *window = foregroundWindow();
+    if (window && !bannerView.superview) {
+        [window addSubview:bannerView];
+    }
+
+    [self setPosition:self.x :self.y];
+    [bannerView.superview bringSubviewToFront:bannerView];
     _handler->bannerLoaded();
 }
 

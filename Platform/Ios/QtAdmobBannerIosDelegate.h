@@ -12,6 +12,8 @@
 @property (nonatomic, strong, nullable) GADBannerView* bannerView;
 @property (nonatomic, assign, nullable) QtAdmobBannerIosDelegateImpl *handler;
 @property (nonatomic, strong, nullable) GADRequest *request;
+@property (nonatomic, assign) int x;
+@property (nonatomic, assign) int y;
 
 -(nonnull id) init: (QtAdmobBannerIosDelegateImpl *_Nonnull) handler;
 -(void) dealloc;

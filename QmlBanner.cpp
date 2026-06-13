@@ -106,16 +106,16 @@ QmlBanner::QmlBanner()
             syncVisibility();
         }
     }
-
-    connect(this, &QQuickItem::xChanged, this, &QmlBanner::syncGeometry);
-    connect(this, &QQuickItem::yChanged, this, &QmlBanner::syncGeometry);
-    connect(this, &QQuickItem::visibleChanged, this, &QmlBanner::syncVisibility);
 #endif
 
 #if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
     m_Admob = new QtAdmobBannerIosDelegateImpl();
     m_Admob->setQtAdmobBannerIos(this);
 #endif
+
+    connect(this, &QQuickItem::xChanged, this, &QmlBanner::syncGeometry);
+    connect(this, &QQuickItem::yChanged, this, &QmlBanner::syncGeometry);
+    connect(this, &QQuickItem::visibleChanged, this, &QmlBanner::syncVisibility);
 }
 
 QmlBanner::~QmlBanner()

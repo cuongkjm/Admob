@@ -5,12 +5,20 @@ namespace {
 UIViewController* rootViewController()
 {
     UIApplication *application = [UIApplication sharedApplication];
-    NSArray *windows = [application windows];
-    UIViewController * __block controller = nil;
-    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-        controller = [window rootViewController];
-        *stop = (controller != nil);
-    }];
+    UIWindow *keyWindow = application.keyWindow;
+    if (!keyWindow) {
+        for (UIWindow *window in application.windows) {
+            if (!window.hidden) {
+                keyWindow = window;
+                break;
+            }
+        }
+    }
+
+    UIViewController *controller = keyWindow.rootViewController;
+    while (controller.presentedViewController) {
+        controller = controller.presentedViewController;
+    }
     return controller;
 }
 }
@@ -22,38 +30,45 @@ UIViewController* rootViewController()
     if (self)
     {
         _handler = handler;
-        _request = [GADRequest request];
+        self.request = [GADRequest request];
     }
     return self;
 }
 
 - (void)dealloc {
-    _interstitialAd.fullScreenContentDelegate = nil;
+    self.interstitialAd.fullScreenContentDelegate = nil;
     _handler = nullptr;
-    _request = nil;
-    _interstitialAd = nil;
+    self.request = nil;
+    self.interstitialAd = nil;
     [super dealloc];
 }
 
 - (void)showInterstitialAd {
-    if (!_interstitialAd) {
+    if (!self.interstitialAd) {
         return;
     }
-    [_interstitialAd presentFromRootViewController:rootViewController()];
+
+    UIViewController *controller = rootViewController();
+    if (!controller) {
+        _handler->interstitialAdFailedToLoad(0);
+        return;
+    }
+
+    [self.interstitialAd presentFromRootViewController:controller];
 }
 
 - (void)loadInterstitialAd {
-    if (!_unitAdmobId) {
+    if (!self.unitAdmobId) {
         return;
     }
 
-    [GADInterstitialAd loadWithAdUnitID:_unitAdmobId request:_request completionHandler:^(GADInterstitialAd *ad, NSError *error) {
+    [GADInterstitialAd loadWithAdUnitID:self.unitAdmobId request:self.request completionHandler:^(GADInterstitialAd *ad, NSError *error) {
         if (error) {
             _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
             return;
         }
-        _interstitialAd = ad;
-        _interstitialAd.fullScreenContentDelegate = self;
+        self.interstitialAd = ad;
+        self.interstitialAd.fullScreenContentDelegate = self;
         _handler->interstitialAdLoaded();
     }];
 }
@@ -64,7 +79,7 @@ UIViewController* rootViewController()
 }
 
 - (void)setInterstitialAdUnitId:(const QString &)unitId {
-    _unitAdmobId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
+    self.unitAdmobId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
 }
 
 - (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad didFailToPresentFullScreenContentWithError:(nonnull NSError *)error {
@@ -85,7 +100,7 @@ UIViewController* rootViewController()
 - (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
     _handler->interstitialAdClosed();
-    _interstitialAd = nil;
+    self.interstitialAd = nil;
 }
 
 void QtAdmobInterstitialIosDelegateImpl::setQtAdmobInterstitialIos(QmlInterstitialAd *qtAdmobIntersitialIos)

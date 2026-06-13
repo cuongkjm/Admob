@@ -6,12 +6,20 @@ namespace {
 UIViewController* rootViewController()
 {
     UIApplication *application = [UIApplication sharedApplication];
-    NSArray *windows = [application windows];
-    UIViewController * __block controller = nil;
-    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-        controller = [window rootViewController];
-        *stop = (controller != nil);
-    }];
+    UIWindow *keyWindow = application.keyWindow;
+    if (!keyWindow) {
+        for (UIWindow *window in application.windows) {
+            if (!window.hidden) {
+                keyWindow = window;
+                break;
+            }
+        }
+    }
+
+    UIViewController *controller = keyWindow.rootViewController;
+    while (controller.presentedViewController) {
+        controller = controller.presentedViewController;
+    }
     return controller;
 }
 }
@@ -23,21 +31,21 @@ UIViewController* rootViewController()
     if (self)
     {
         _handler = handler;
-        _request = [GADRequest request];
+        self.request = [GADRequest request];
     }
     return self;
 }
 
 - (void)dealloc {
-    _rewardedAd.fullScreenContentDelegate = nil;
+    self.rewardedAd.fullScreenContentDelegate = nil;
     _handler = nullptr;
-    _request = nil;
-    _rewardedAd = nil;
+    self.request = nil;
+    self.rewardedAd = nil;
     [super dealloc];
 }
 
 - (void)setUnitId:(const QString &)unitId {
-    _adUnitId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
+    self.adUnitId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
 }
 
 - (void)setTestDeviceId:(const QString &)testDeviceid {
@@ -47,27 +55,33 @@ UIViewController* rootViewController()
 
 - (void)loadRewardedVideoAd
 {
-    if (!_adUnitId) {
+    if (!self.adUnitId) {
         return;
     }
 
-    [GADRewardedAd loadWithAdUnitID:_adUnitId request:_request completionHandler:^(GADRewardedAd *ad, NSError *error) {
+    [GADRewardedAd loadWithAdUnitID:self.adUnitId request:self.request completionHandler:^(GADRewardedAd *ad, NSError *error) {
         if (error) {
             _handler->rewardedVideoAdFailedToLoad(static_cast<int>(error.code));
             return;
         }
-        _rewardedAd = ad;
-        _rewardedAd.fullScreenContentDelegate = self;
+        self.rewardedAd = ad;
+        self.rewardedAd.fullScreenContentDelegate = self;
         _handler->rewardedVideoAdLoaded();
     }];
 }
 
 - (void)showVideo {
-    if (!_rewardedAd) {
+    if (!self.rewardedAd) {
         return;
     }
 
-    [_rewardedAd presentFromRootViewController:rootViewController() userDidEarnRewardHandler:^{
+    UIViewController *controller = rootViewController();
+    if (!controller) {
+        _handler->rewardedVideoAdFailedToLoad(0);
+        return;
+    }
+
+    [self.rewardedAd presentFromRootViewController:controller userDidEarnRewardHandler:^{
         _handler->rewarded();
         _handler->rewardedVideoCompleted();
     }];
@@ -92,7 +106,7 @@ UIViewController* rootViewController()
 - (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
     _handler->rewardedVideoAdClosed();
-    _rewardedAd = nil;
+    self.rewardedAd = nil;
 }
 
 QtAdmobRewardVideoDelegateImpl::QtAdmobRewardVideoDelegateImpl() {
