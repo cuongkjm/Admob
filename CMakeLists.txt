@@ -34,6 +34,9 @@ file(WRITE "${qtadmob_qml_import_dir}/qmldir" "module AdMob\n")
 
 if(IOS)
     set(GOOGLE_MOBILE_ADS_IOS_ROOT "" CACHE PATH "Path to GoogleMobileAds iOS framework root")
+    if(NOT GOOGLE_MOBILE_ADS_IOS_ROOT)
+        message(FATAL_ERROR "GOOGLE_MOBILE_ADS_IOS_ROOT is required for iOS builds. Pass -DGOOGLE_MOBILE_ADS_IOS_ROOT=/path/to/GoogleMobileAdsSdkiOS.")
+    endif()
 
     target_sources(qtadmob
         PRIVATE
@@ -71,14 +74,28 @@ if(IOS)
             target_compile_options(qtadmob PUBLIC "SHELL:-F${google_mobile_ads_ios_framework_search_dir}")
             target_link_options(qtadmob PUBLIC "SHELL:-F${google_mobile_ads_ios_framework_search_dir}")
         else()
-            message(WARNING "GOOGLE_MOBILE_ADS_IOS_ROOT does not contain a recognized GoogleMobileAds.framework path")
+            message(FATAL_ERROR "GOOGLE_MOBILE_ADS_IOS_ROOT does not contain a recognized GoogleMobileAds.framework path")
         endif()
     endif()
     target_link_options(qtadmob PUBLIC -ObjC)
-    target_link_libraries(qtadmob PUBLIC "-framework GoogleMobileAds")
+    target_link_libraries(qtadmob PUBLIC
+        "-framework GoogleMobileAds"
+        "-framework JavaScriptCore"
+    )
 endif()
 
 set_property(GLOBAL PROPERTY QTADMOB_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/Platform/Android")
+
+function(qtadmob_configure_ios_target target)
+    if(NOT IOS OR NOT CMAKE_GENERATOR STREQUAL "Xcode")
+        return()
+    endif()
+
+    set_target_properties(${target} PROPERTIES
+        XCODE_ATTRIBUTE_ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES YES
+        XCODE_ATTRIBUTE_LIBRARY_SEARCH_PATHS "$(inherited) $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)"
+    )
+endfunction()
 
 function(qtadmob_configure_android_target target)
     if(NOT ANDROID)

@@ -4,13 +4,6 @@
 #include "Platform/Ios/QtAdmobBannerIosDelegateImpl.h"
 #endif
 
-#ifdef Q_OS_ANDROID
-#include "ActiveRegistry.h"
-
-#include <QCoreApplication>
-#include <QJniEnvironment>
-#include <QMetaObject>
-#include <QPointer>
 #include <QSize>
 #include <QtGlobal>
 
@@ -37,7 +30,17 @@ QSize bannerSizeFor(QmlBanner::BannerSizes size)
 
     return {320, 50};
 }
+}
 
+#ifdef Q_OS_ANDROID
+#include "ActiveRegistry.h"
+
+#include <QCoreApplication>
+#include <QJniEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+
+namespace {
 template <typename Object, typename Callback>
 void dispatchToQt(jlong nativePointer, Callback callback)
 {
