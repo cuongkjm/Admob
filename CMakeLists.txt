@@ -91,7 +91,19 @@ function(qtadmob_configure_ios_target target)
         return()
     endif()
 
+    if(NOT QTADMOB_IOS_APPLICATION_ID)
+        message(FATAL_ERROR "QTADMOB_IOS_APPLICATION_ID is required for iOS builds. Pass the AdMob app id before calling qtadmob_configure_ios_target().")
+    endif()
+
+    set(qtadmob_ios_info_plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist")
+    configure_file(
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Platform/Ios/Info.plist"
+        "${qtadmob_ios_info_plist}"
+        @ONLY
+    )
+
     set_target_properties(${target} PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${qtadmob_ios_info_plist}"
         XCODE_ATTRIBUTE_ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES YES
         XCODE_ATTRIBUTE_LIBRARY_SEARCH_PATHS "$(inherited) $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)"
     )
