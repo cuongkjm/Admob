@@ -2,34 +2,30 @@
 #define QTADMOBREWARDVIDEODELEGATE_H
 
 #include "QtAdmobRewardVideoDelegateImpl.h"
-#include <GoogleMobileAds/GADRewardBasedVideoAd.h>
+#include <GoogleMobileAds/GADRewardedAd.h>
 #include <GoogleMobileAds/GADMobileAds.h>
 #include <QString>
 
-@interface QtAdmobRewardVideoDelegate : NSObject<GADRewardBasedVideoAdDelegate>
+@interface QtAdmobRewardVideoDelegate : NSObject<GADFullScreenContentDelegate>
 
-//@property (nonatomic, strong) GADRewardBasedVideoAd* rewardVideoView;
-@property (nonatomic, strong) NSMutableArray* testDevices;
-@property (nonatomic, assign) QtAdmobRewardVideoDelegateImpl *handler;
-@property (nonatomic, strong) GADRequest *request;
-@property (nonatomic, strong) NSString* adUnitId;
+@property (nonatomic, strong, nullable) GADRewardedAd* rewardedAd;
+@property (nonatomic, assign, nullable) QtAdmobRewardVideoDelegateImpl *handler;
+@property (nonatomic, strong, nullable) GADRequest *request;
+@property (nonatomic, strong, nullable) NSString* adUnitId;
 
-- (id) init: (QtAdmobRewardVideoDelegateImpl*) handler;
+- (nonnull id) init: (QtAdmobRewardVideoDelegateImpl *_Nonnull) handler;
 - (void) dealloc;
 - (void) setUnitId: (const QString &) unitId;
 - (void) setTestDeviceId: (const QString &) testDeviceid;
 - (void) loadRewardedVideoAd;
 - (void) showVideo;
 
-- (void) rewardBasedVideoAdDidOpen:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdDidClose:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdDidReceiveAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdDidStartPlaying:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdMetadataDidChange:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdDidCompletePlaying:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAdWillLeaveApplication:(GADRewardBasedVideoAd *)rewardBasedVideoAd;
-- (void) rewardBasedVideoAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd didFailToLoadWithError:(NSError *)error;
-- (void) rewardBasedVideoAd:(GADRewardBasedVideoAd *)rewardBasedVideoAd didRewardUserWithReward:(GADAdReward *)reward;
+- (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad
+    didFailToPresentFullScreenContentWithError:(nonnull NSError *)error;
+- (void)adWillPresentFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
+- (void)adWillDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
+- (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
+
 @end
 
 #endif // QTADMOBREWARDVIDEODELEGATE_H

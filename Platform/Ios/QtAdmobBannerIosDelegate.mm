@@ -1,6 +1,30 @@
 #import "QtAdmobBannerIosDelegate.h"
 #include "QmlBanner.h"
 
+namespace {
+UIWindow* foregroundWindow()
+{
+    UIApplication *application = [UIApplication sharedApplication];
+    UIWindow *keyWindow = application.keyWindow;
+    if (keyWindow && !keyWindow.hidden) {
+        return keyWindow;
+    }
+
+    for (UIWindow *window in application.windows) {
+        if (!window.hidden) {
+            return window;
+        }
+    }
+
+    return nil;
+}
+
+UIViewController* rootViewController()
+{
+    return foregroundWindow().rootViewController;
+}
+}
+
 @implementation QtAdmobBannerIosDelegate
 
 -(id) init: (QtAdmobBannerIosDelegateImpl*) handler
@@ -9,42 +33,47 @@
     if (self)
     {
         _handler = handler;
-        _testDevices = [[NSMutableArray alloc] initWithArray:@[kGADSimulatorID]];
-        _bannerView = [[GADBannerView alloc] initWithAdSize:kGADAdSizeLargeBanner];
+        self.x = 0;
+        self.y = 0;
+        _bannerView = [[GADBannerView alloc] initWithAdSize:GADAdSizeLargeBanner];
         _bannerView.delegate = self;
-        
-        UIApplication *application = [UIApplication sharedApplication];
-        NSArray *windows = [application windows];
-        UIViewController * __block rootViewController = nil;
-        [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-            rootViewController = [window rootViewController];
-            *stop = (rootViewController != nil);
-        }];
-        UIView *view = rootViewController.view;
-        
-        _bannerView.rootViewController = rootViewController;
-        _bannerView.autoloadEnabled = YES;
-        [view addSubview:_bannerView];
-        
+        _bannerView.rootViewController = rootViewController();
+        UIWindow *window = foregroundWindow();
+        if (window) {
+            [window addSubview:_bannerView];
+        }
         _request = [GADRequest request];
-        _request.testDevices = _testDevices;
     }
     return self;
 }
 
 -(void) dealloc
 {
-    [super dealloc];
+    _bannerView.delegate = nil;
+    [_bannerView removeFromSuperview];
     _handler = nil;
     _request = nil;
     _bannerView = nil;
+    [super dealloc];
 }
 
 -(void) setPosition: (const int &) x : (const int &) y
 {
-    CGFloat yOffset = [UIApplication sharedApplication].statusBarFrame.size.height;
+    self.x = x;
+    self.y = y;
+
     CGRect frame = _bannerView.frame;
-    frame.origin = CGPointMake(x, y + yOffset);
+    UIView *container = _bannerView.superview ?: foregroundWindow();
+    if (!container) {
+        frame.origin = CGPointMake(x, y);
+        _bannerView.frame = frame;
+        return;
+    }
+
+    CGFloat maxX = container.bounds.size.width - frame.size.width;
+    CGFloat maxY = container.bounds.size.height - container.safeAreaInsets.bottom - frame.size.height;
+    CGFloat centeredX = (container.bounds.size.width - frame.size.width) / 2;
+    frame.origin = CGPointMake(MAX(0, MIN(centeredX, maxX)), maxY);
     _bannerView.frame = frame;
 }
 
@@ -55,55 +84,61 @@
 
 -(void) loadBanner
 {
+    if (!_bannerView.rootViewController) {
+        _bannerView.rootViewController = rootViewController();
+    }
+    UIWindow *window = foregroundWindow();
+    if (window && !_bannerView.superview) {
+        [window addSubview:_bannerView];
+    }
+    [self setPosition:self.x :self.y];
     [_bannerView loadRequest:_request];
 }
 
 -(void) setBannerSize:(QtAdmobBannerIosDelegateImpl::BannerSizes)size
 {
-    GADAdSize newSize = kGADAdSizeBanner;
+    GADAdSize newSize = GADAdSizeBanner;
     switch (size) {
     case QtAdmobBannerIosDelegateImpl::BANNER:
-        newSize = kGADAdSizeBanner;
+        newSize = GADAdSizeBanner;
         break;
     case QtAdmobBannerIosDelegateImpl::FLUID:
-        newSize = kGADAdSizeFluid;
+        newSize = GADAdSizeFluid;
         break;
     case QtAdmobBannerIosDelegateImpl::FULL_BANNER:
-        newSize = kGADAdSizeFullBanner;
+        newSize = GADAdSizeFullBanner;
         break;
     case QtAdmobBannerIosDelegateImpl::LARGE_BANNER:
-        newSize = kGADAdSizeLargeBanner;
+        newSize = GADAdSizeLargeBanner;
         break;
     case QtAdmobBannerIosDelegateImpl::LEADERBOARD:
-        newSize = kGADAdSizeLeaderboard;
+        newSize = GADAdSizeLeaderboard;
         break;
     case QtAdmobBannerIosDelegateImpl::MEDIUM_RECTANGLE:
-        newSize = kGADAdSizeMediumRectangle;
+        newSize = GADAdSizeMediumRectangle;
         break;
     case QtAdmobBannerIosDelegateImpl::SMART_BANNER:
-        newSize = kGADAdSizeSmartBannerPortrait;
+        newSize = GADLargeAnchoredAdaptiveBannerAdSizeWithWidth(_bannerView.rootViewController.view.frame.size.width);
         break;
     case QtAdmobBannerIosDelegateImpl::WIDE_SKYSCRAPER:
-        newSize = kGADAdSizeSkyscraper;
+        newSize = GADAdSizeSkyscraper;
         break;
-
     default:
         break;
     }
-    
+
     _bannerView.adSize = newSize;
+    [self setPosition:self.x :self.y];
 }
 
 - (int) getAdBannerWidth
 {
-    CGSize size = _bannerView.adSize.size;
-    return size.width;
+    return _bannerView.adSize.size.width;
 }
 
 - (int) getAdBannerHeight
 {
-    CGSize size = _bannerView.adSize.size;
-    return size.height;
+    return _bannerView.adSize.size.height;
 }
 
 - (void) setVisible:(const bool &)visible
@@ -113,36 +148,43 @@
 
 - (void) setTestDeviceId:(const QString &) deviceId
 {
-    [_request.testDevices arrayByAddingObject:[NSString stringWithUTF8String:deviceId.toUtf8().data()]];
+    NSString *identifier = [NSString stringWithUTF8String:deviceId.toUtf8().data()];
+    [GADMobileAds sharedInstance].requestConfiguration.testDeviceIdentifiers = @[identifier];
 }
 
-- (void)adViewDidReceiveAd:(nonnull GADBannerView *)view {
-    Q_UNUSED(view);
+- (void)bannerViewDidReceiveAd:(nonnull GADBannerView *)bannerView
+{
+    UIWindow *window = foregroundWindow();
+    if (window && !bannerView.superview) {
+        [window addSubview:bannerView];
+    }
+
+    [self setPosition:self.x :self.y];
+    [bannerView.superview bringSubviewToFront:bannerView];
     _handler->bannerLoaded();
 }
 
-- (void)adView:(nonnull GADBannerView *)view didFailToReceiveAdWithError:(nonnull GADRequestError *)error {
-    Q_UNUSED(view);
+- (void)bannerView:(nonnull GADBannerView *)bannerView didFailToReceiveAdWithError:(nonnull NSError *)error
+{
+    Q_UNUSED(bannerView);
     _handler->bannerFailedToLoad(static_cast<int>(error.code));
 }
 
-- (void)adViewWillLeaveApplication:(nonnull GADBannerView *)view {
-    Q_UNUSED(view);
-    _handler->bannerLeftApplication();
-}
-
-- (void)adViewDidDismissScreen:(nonnull GADBannerView *)view {
-    Q_UNUSED(view);
+- (void)bannerViewDidDismissScreen:(nonnull GADBannerView *)bannerView
+{
+    Q_UNUSED(bannerView);
     _handler->bannerClosed();
 }
 
-- (void)adViewWillDismissScreen:(nonnull GADBannerView *)view {
-    Q_UNUSED(view);
+- (void)bannerViewWillDismissScreen:(nonnull GADBannerView *)bannerView
+{
+    Q_UNUSED(bannerView);
     _handler->bannerClosed();
 }
 
-- (void)adViewWillPresentScreen:(nonnull GADBannerView *)view {
-    Q_UNUSED(view);
+- (void)bannerViewWillPresentScreen:(nonnull GADBannerView *)bannerView
+{
+    Q_UNUSED(bannerView);
     _handler->bannerOpened();
 }
 
@@ -187,14 +229,12 @@ void QtAdmobBannerIosDelegateImpl::setBannerSize(BannerSizes size)
 
 int QtAdmobBannerIosDelegateImpl::getAdBannerWidth()
 {
-    int width = [(id) self getAdBannerWidth];
-    return width;
+    return [(id) self getAdBannerWidth];
 }
 
 int QtAdmobBannerIosDelegateImpl::getAdBannerHeight()
 {
-    int height = [(id) self getAdBannerHeight];
-    return height;
+    return [(id) self getAdBannerHeight];
 }
 
 void QtAdmobBannerIosDelegateImpl::setTestDeviceId(const QString &deviceId)
@@ -209,33 +249,32 @@ void QtAdmobBannerIosDelegateImpl::setVisible(const bool &visible)
 
 void QtAdmobBannerIosDelegateImpl::bannerLoaded()
 {
-    m_QtAdmobBannerIos->bannerLoaded();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerLoaded();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerFailedToLoad(int errorCode)
 {
-    m_QtAdmobBannerIos->bannerFailedToLoad(errorCode);
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerFailedToLoad(errorCode);
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerOpened()
 {
-    m_QtAdmobBannerIos->bannerOpened();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerOpened();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerLeftApplication()
 {
-    m_QtAdmobBannerIos->bannerLeftApplication();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerLeftApplication();
 }
 
 void QtAdmobBannerIosDelegateImpl::bannerClosed()
 {
-    m_QtAdmobBannerIos->bannerClosed();
+    if (m_QtAdmobBannerIos) m_QtAdmobBannerIos->bannerClosed();
 }
 
 void QtAdmobBannerIosDelegateImpl::setQtAdmobBannerIos(QmlBanner *QtAdmobBannerIos)
 {
     m_QtAdmobBannerIos = QtAdmobBannerIos;
 }
-
 
 @end

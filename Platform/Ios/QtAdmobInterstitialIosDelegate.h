@@ -2,32 +2,29 @@
 #define QTADMOBINTERSTITIALIOSDELEGATE_H
 
 #include "QtAdmobInterstitialIosDelegateImpl.h"
-#include <GoogleMobileAds/GADInterstitial.h>
+#include <GoogleMobileAds/GADInterstitialAd.h>
 #include <GoogleMobileAds/GADMobileAds.h>
 #include <QString>
 
-@interface QtAdmobInterstitialIosDelegate : NSObject<GADInterstitialDelegate>
+@interface QtAdmobInterstitialIosDelegate : NSObject<GADFullScreenContentDelegate>
 
-@property (nonatomic, strong) GADInterstitial* interstitialView;
-@property (nonatomic, strong) NSMutableArray* testDevices;
-@property (nonatomic, assign) QtAdmobInterstitialIosDelegateImpl *handler;
-@property (nonatomic, strong) GADRequest *request;
-@property (nonatomic, strong) NSString *unitAdmobId;
+@property (nonatomic, strong, nullable) GADInterstitialAd* interstitialAd;
+@property (nonatomic, assign, nullable) QtAdmobInterstitialIosDelegateImpl *handler;
+@property (nonatomic, strong, nullable) GADRequest *request;
+@property (nonatomic, strong, nullable) NSString *unitAdmobId;
 
-- (id) init: (QtAdmobInterstitialIosDelegateImpl*) handler;
+- (nonnull id) init: (QtAdmobInterstitialIosDelegateImpl *_Nonnull) handler;
 - (void) dealloc;
 - (void) setInterstitialAdUnitId: (const QString &) unitId;
 - (void) setInterstitialAdTestDeviceId: (const QString &) testDeviceId;
 - (void) loadInterstitialAd;
 - (void) showInterstitialAd;
 
-- (void) interstitialDidReceiveAd:(GADInterstitial *)ad;
-- (void) interstitialDidDismissScreen:(GADInterstitial *)ad;
-- (void) interstitialWillDismissScreen:(GADInterstitial *)ad;
-- (void) interstitialWillPresentScreen:(GADInterstitial *)ad;
-- (void) interstitialWillLeaveApplication:(GADInterstitial *)ad;
-- (void) interstitialDidFailToPresentScreen:(GADInterstitial *)ad;
-- (void) interstitial:(GADInterstitial *)ad didFailToReceiveAdWithError:(GADRequestError *)error;
+- (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad
+    didFailToPresentFullScreenContentWithError:(nonnull NSError *)error;
+- (void)adWillPresentFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
+- (void)adWillDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
+- (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad;
 
 @end
 

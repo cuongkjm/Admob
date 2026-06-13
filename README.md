@@ -1,15 +1,224 @@
-# Admob
+# Qt AdMob Integration Library
 
-C++ QT Admob Android and IOS
+A cross-platform C++ and QML library for integrating Google AdMob into Qt 6 mobile applications on Android and iOS.
 
-Banner Ads - Interstitial Ads - Rewarded Video Ads
+---
 
-How to use this lib for Android OS, Please watch this video:
-https://www.youtube.com/watch?v=YsVkE4ifU_4
+## Supported Ad Formats
 
-Project to test this lib in Android OS:
-https://github.com/cuongkjm/TestAdmob
+- **Banner Ads (`QmlBanner`)**: Rectangular, docked, or custom positioned overlay ads.
+- **Interstitial Ads (`QmlInterstitialAd`)**: Full-screen interstitial ads with lifecycle callback states.
+- **Rewarded Video Ads (`QmlRewardedVideoAd`)**: Rewarded ads that notify QML after users earn rewards.
 
-Guide for IOS: Update later!
+---
 
-Report issue: https://github.com/cuongkjm/Admob/issues
+## Requirements
+
+- Qt 6 with CMake.
+- Android: Google Mobile Ads SDK available to the Android Gradle build.
+- iOS: Google Mobile Ads SDK installed through Swift Package Manager, CocoaPods, or a local `GoogleMobileAds.framework` / `GoogleMobileAds.xcframework` path.
+- Desktop: Windows, macOS desktop, and Linux compile with no-op ad methods because Google AdMob has no desktop SDK.
+
+---
+
+## Platform Behavior
+
+| Platform | Behavior | Extra SDK Required |
+| --- | --- | --- |
+| Android | Real AdMob integration through Java/JNI | Android SDK/NDK + Google Mobile Ads Android SDK |
+| iOS | Real AdMob integration through Objective-C++ | Google Mobile Ads iOS SDK |
+| Windows | Compiles, ad methods are no-op | None |
+| macOS desktop | Compiles, ad methods are no-op | None |
+| Linux | Compiles, ad methods are no-op | None |
+
+Desktop no-op methods do not emit fake success callbacks.
+
+---
+
+## CMake Integration
+
+Add this repository as a CMake submodule or FetchContent dependency, link the target, then call the platform helpers on your Qt app target:
+
+```cmake
+add_subdirectory(path/to/Admob)
+
+qt_add_executable(myapp
+    main.cpp
+    qml.qrc
+)
+
+target_link_libraries(myapp PRIVATE QtAdMob::qtadmob)
+
+if(ANDROID)
+    set_property(TARGET myapp PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
+endif()
+
+if(IOS)
+    set(QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON)
+    set(QTADMOB_IOS_APPLICATION_ID "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy")
+endif()
+
+qtadmob_configure_android_target(myapp)
+qtadmob_configure_ios_target(myapp)
+```
+
+`qtadmob_configure_android_target()` is a no-op outside Android. On Android it merges QtAdMob Java package sources and `proguard-rules.pro` into the app `QT_ANDROID_PACKAGE_SOURCE_DIR`. If your app already has an `android/` package source directory, set it before calling the helper.
+
+Android apps still need an AdMob application id in manifest metadata:
+
+```xml
+<meta-data
+    android:name="com.google.android.gms.ads.APPLICATION_ID"
+    android:value="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy" />
+```
+
+No custom `QtActivity` subclass is required. QtAdMob provides helper classes under `com.qtadmob`.
+
+## Google Mobile Ads iOS SDK
+
+Get the iOS SDK from Google's official Google Mobile Ads iOS documentation: https://developers.google.com/admob/ios/quick-start. This library is validated with manual Google Mobile Ads iOS SDK `13.5.0`. Use one of these app-level integration paths:
+
+- **Swift Package Manager**: add `https://github.com/googleads/swift-package-manager-google-mobile-ads.git` in Xcode.
+- **CocoaPods**: add `pod 'Google-Mobile-Ads-SDK'` to the app `Podfile`.
+- **Local framework**: use downloaded `GoogleMobileAds.framework` or `GoogleMobileAds.xcframework` for direct CMake builds.
+
+For direct iOS CMake builds, pass a local path when it is not already provided by the app build system. The path can be the directory containing `GoogleMobileAds.framework`, the framework itself, or `GoogleMobileAds.xcframework`:
+
+```cmake
+set(GOOGLE_MOBILE_ADS_IOS_ROOT "/path/to/GoogleMobileAds.xcframework")
+```
+
+Set `QTADMOB_IOS_APPLICATION_ID` before `qtadmob_configure_ios_target(myapp)`. The helper writes `GADApplicationIdentifier` into the generated app `Info.plist` for Xcode builds. If you provide your own launch screen, set `QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN ON` before finalizing the target, as the working TestAdmob sample does.
+
+If the SDK is missing, iOS builds should fail clearly at compile/link time instead of silently disabling real ads.
+
+Current iOS bridge uses Google Mobile Ads iOS SDK `13.5.0` APIs: `GADInterstitialAd`, `GADRewardedAd`, `GADFullScreenContentDelegate`, and `GADBannerViewDelegate`.
+
+---
+
+## Validation Status
+
+Validated builds from current implementation work:
+
+- macOS desktop CMake build passes with no-op ad methods.
+- Android `arm64-v8a` CMake build passes with Qt 6 JNI code and `com.qtadmob` package sources.
+- iOS CMake build passes with `GOOGLE_MOBILE_ADS_IOS_ROOT=/Users/cuongkjm/cuongkjm/Apps/GoogleMobileAdsSdkiOS-13.5.0`.
+
+Known non-blocking iOS warnings remain in `Platform/Ios/QtAdmobBannerIosDelegate.mm` for deprecated `UIApplication.windows` and `statusBarFrame`.
+
+---
+
+## Quick Start (QML Declarative Syntax)
+
+Register the QML types once in your C++ entry point:
+
+```cpp
+qmlRegisterType<QmlBanner>("AdMob", 1, 0, "QmlBanner");
+qmlRegisterType<QmlInterstitialAd>("AdMob", 1, 0, "QmlInterstitialAd");
+qmlRegisterType<QmlRewardedVideoAd>("AdMob", 1, 0, "QmlRewardedVideoAd");
+```
+
+Use `import AdMob 1.0` in QML. Load ads first, then show full-screen formats only after their loaded signal enables UI:
+
+```qml
+import QtQuick
+import QtQuick.Controls
+import AdMob 1.0
+
+Item {
+    readonly property bool isIos: Qt.platform.os === "ios"
+    readonly property string bannerId: isIos ? "ca-app-pub-3940256099942544/2934735716" : "ca-app-pub-3940256099942544/6300978111"
+    readonly property string interstitialId: isIos ? "ca-app-pub-3940256099942544/4411468910" : "ca-app-pub-3940256099942544/1033173712"
+    readonly property string rewardedId: isIos ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917"
+
+    QmlBanner {
+        id: banner
+        unitId: bannerId
+        bannerSize: QmlBanner.BANNER
+        visible: true
+        testDeviceId: "41E647017EBEBB0650DAE627391B7A43"
+    }
+
+    QmlInterstitialAd {
+        id: interstitial
+        unitId: interstitialId
+        testDeviceId: banner.testDeviceId
+        onInterstitialAdLoaded: showInterstitialButton.enabled = true
+    }
+
+    QmlRewardedVideoAd {
+        id: rewarded
+        unitId: rewardedId
+        testDeviceId: banner.testDeviceId
+        onRewardedVideoAdLoaded: showRewardedButton.enabled = true
+        onRewarded: console.log("Grant reward")
+    }
+
+    Button {
+        id: showInterstitialButton
+        enabled: false
+        text: "Show interstitial"
+        onClicked: {
+            enabled = false
+            interstitial.showInterstitialAd()
+        }
+    }
+
+    Button {
+        id: showRewardedButton
+        enabled: false
+        text: "Show rewarded"
+        onClicked: {
+            enabled = false
+            rewarded.show()
+        }
+    }
+
+    Component.onCompleted: {
+        banner.loadBanner()
+        interstitial.loadInterstitialAd()
+        rewarded.loadRewardedVideoAd()
+    }
+}
+```
+
+Sample app id for iOS: `ca-app-pub-3940256099942544~1458002511`. Sample app id for Android manifest: use Google's Android test app id, for example `ca-app-pub-3940256099942544~3347511713` as in TestAdmob.
+
+Desktop builds keep the same QML source compilable, but ad methods are no-op and do not emit fake success callbacks.
+
+---
+
+## Project Structure
+
+```
+.
+├── CMakeLists.txt
+├── QmlBanner.h / .cpp
+├── QmlInterstitialAd.h / .cpp
+├── QmlRewardedVideoAd.h / .cpp
+├── ActiveRegistry.h
+├── Platform/
+│   ├── Android/
+│   │   ├── proguard-rules.pro
+│   │   └── src/com/qtadmob/
+│   └── Ios/
+└── docs/
+```
+
+---
+
+## Technical Documentation Reference
+
+1. **[Product Requirements & Overview](./docs/project-overview-pdr.md)**: Features, requirements, and target goals.
+2. **[System Architecture](./docs/system-architecture.md)**: Layered C++, Android JNI, and iOS ObjC++ bridge architecture.
+3. **[Code Standards & JNI Protocols](./docs/code-standards.md)**: ARC/no-ARC rules, JNI reference management, and formatting.
+4. **[Codebase Reference Summary](./docs/codebase-summary.md)**: Code files overview and responsibility matrix.
+5. **[Development Roadmap](./docs/project-roadmap.md)**: Current features and upcoming updates.
+6. **[Design Principles](./docs/design-system/design-principles.md)**: Declarative bindings and non-blocking asynchronous APIs.
+
+---
+
+## Demos & Community References
+
+- **Demo Sandbox Application**: [cuongkjm/TestAdmob](https://github.com/cuongkjm/TestAdmob)
+- **Issue Tracker & Feature Requests**: [GitHub Issues](https://github.com/cuongkjm/Admob/issues)

@@ -1,6 +1,28 @@
 #import "QtAdmobInterstitialIosDelegate.h"
 #include "QmlInterstitialAd.h"
 
+namespace {
+UIViewController* rootViewController()
+{
+    UIApplication *application = [UIApplication sharedApplication];
+    UIWindow *keyWindow = application.keyWindow;
+    if (!keyWindow) {
+        for (UIWindow *window in application.windows) {
+            if (!window.hidden) {
+                keyWindow = window;
+                break;
+            }
+        }
+    }
+
+    UIViewController *controller = keyWindow.rootViewController;
+    while (controller.presentedViewController) {
+        controller = controller.presentedViewController;
+    }
+    return controller;
+}
+}
+
 @implementation QtAdmobInterstitialIosDelegate
 
 - (id)init:(QtAdmobInterstitialIosDelegateImpl *)handler {
@@ -8,86 +30,77 @@
     if (self)
     {
         _handler = handler;
-        _testDevices = [[NSMutableArray alloc] initWithArray:@[kGADSimulatorID]];
-        [_interstitialView release];
-        _interstitialView = [GADInterstitial alloc];
-        _interstitialView.delegate = self;
-        _request = [GADRequest alloc];
-        _request.testDevices = _testDevices;
+        self.request = [GADRequest request];
     }
     return self;
 }
 
 - (void)dealloc {
-    _interstitialView.delegate = nil;
+    self.interstitialAd.fullScreenContentDelegate = nil;
     _handler = nullptr;
-    _testDevices = nil;
-    _request = nil;
+    self.request = nil;
+    self.interstitialAd = nil;
     [super dealloc];
 }
 
 - (void)showInterstitialAd {
-    UIApplication *application = [UIApplication sharedApplication];
-    NSArray *windows = [application windows];
-    UIViewController * __block rootViewController = nil;
-    [windows enumerateObjectsUsingBlock:^(UIWindow * _Nonnull window, NSUInteger, BOOL * _Nonnull stop) {
-        rootViewController = [window rootViewController];
-        *stop = (rootViewController != nil);
-    }];
-    
-    [_interstitialView presentFromRootViewController:rootViewController];
+    if (!self.interstitialAd) {
+        return;
+    }
+
+    UIViewController *controller = rootViewController();
+    if (!controller) {
+        _handler->interstitialAdFailedToLoad(0);
+        return;
+    }
+
+    [self.interstitialAd presentFromRootViewController:controller];
 }
 
 - (void)loadInterstitialAd {
-    if ([_interstitialView hasBeenUsed]) {
-        [_interstitialView release];
-        _interstitialView = [[GADInterstitial alloc] initWithAdUnitID:_unitAdmobId];
-        _interstitialView.delegate = self;
+    if (!self.unitAdmobId) {
+        return;
     }
-    [_interstitialView loadRequest:_request];
+
+    [GADInterstitialAd loadWithAdUnitID:self.unitAdmobId request:self.request completionHandler:^(GADInterstitialAd *ad, NSError *error) {
+        if (error) {
+            _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
+            return;
+        }
+        self.interstitialAd = ad;
+        self.interstitialAd.fullScreenContentDelegate = self;
+        _handler->interstitialAdLoaded();
+    }];
 }
 
 - (void)setInterstitialAdTestDeviceId:(const QString &)testDeviceId {
-    [_request.testDevices arrayByAddingObject:[NSString stringWithUTF8String:testDeviceId.toUtf8().data()]];
+    NSString *identifier = [NSString stringWithUTF8String:testDeviceId.toUtf8().data()];
+    [GADMobileAds sharedInstance].requestConfiguration.testDeviceIdentifiers = @[identifier];
 }
 
 - (void)setInterstitialAdUnitId:(const QString &)unitId {
-    _unitAdmobId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
-    [_interstitialView initWithAdUnitID:_unitAdmobId];
+    self.unitAdmobId = [NSString stringWithUTF8String:unitId.toUtf8().data()];
 }
 
-- (void)interstitial:(GADInterstitial *)ad didFailToReceiveAdWithError:(GADRequestError *)error {
+- (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad didFailToPresentFullScreenContentWithError:(nonnull NSError *)error {
     Q_UNUSED(ad);
     _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
 }
 
-- (void)interstitialDidFailToPresentScreen:(GADInterstitial *)ad {
-    Q_UNUSED(ad);
-}
-
-- (void)interstitialWillLeaveApplication:(GADInterstitial *)ad {
-    Q_UNUSED(ad);
-    _handler->interstitialAdLeftApplication();
-}
-
-- (void)interstitialWillPresentScreen:(GADInterstitial *)ad {
+- (void)adWillPresentFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
     _handler->interstitialAdOpened();
 }
 
-- (void)interstitialWillDismissScreen:(GADInterstitial *)ad {
+- (void)adWillDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
     _handler->interstitialAdClosed();
 }
 
-- (void)interstitialDidDismissScreen:(GADInterstitial *)ad {
+- (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
     _handler->interstitialAdClosed();
-}
-
-- (void)interstitialDidReceiveAd:(GADInterstitial *)ad {
-    Q_UNUSED(ad);
-    _handler->interstitialAdLoaded();
+    self.interstitialAd = nil;
 }
 
 void QtAdmobInterstitialIosDelegateImpl::setQtAdmobInterstitialIos(QmlInterstitialAd *qtAdmobIntersitialIos)
@@ -95,58 +108,49 @@ void QtAdmobInterstitialIosDelegateImpl::setQtAdmobInterstitialIos(QmlInterstiti
     m_QtAdmobInterstitialIos = qtAdmobIntersitialIos;
 }
 
-
 void QtAdmobInterstitialIosDelegateImpl::setInterstitialAdUnitId(const QString &unitId)
 {
     [(id) self setInterstitialAdUnitId:unitId];
 }
 
-
 void QtAdmobInterstitialIosDelegateImpl::setInterstitialAdTestDeviceId(const QString &testDeviceId) {
-    [(id) self setInterstitialAdUnitId:testDeviceId];
+    [(id) self setInterstitialAdTestDeviceId:testDeviceId];
 }
-
 
 void QtAdmobInterstitialIosDelegateImpl::loadInterstitialAd() {
     [(id) self loadInterstitialAd];
 }
 
-
 void QtAdmobInterstitialIosDelegateImpl::showInterstitialAd() {
     [(id) self showInterstitialAd];
 }
 
-QtAdmobInterstitialIosDelegateImpl::~QtAdmobInterstitialIosDelegateImpl() { 
+QtAdmobInterstitialIosDelegateImpl::~QtAdmobInterstitialIosDelegateImpl() {
     [(__bridge id)self dealloc];
 }
 
-
-QtAdmobInterstitialIosDelegateImpl::QtAdmobInterstitialIosDelegateImpl() { 
+QtAdmobInterstitialIosDelegateImpl::QtAdmobInterstitialIosDelegateImpl() {
     self = [[QtAdmobInterstitialIosDelegate alloc] init:this];
 }
 
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdLeftApplication() { 
-    m_QtAdmobInterstitialIos->interstitialAdLeftApplication();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdLeftApplication() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLeftApplication();
 }
 
-
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdOpened() { 
-    m_QtAdmobInterstitialIos->interstitialAdOpened();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdOpened() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdOpened();
 }
 
-
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdFailedToLoad(int errorCode) { 
-    m_QtAdmobInterstitialIos->interstitialAdFailedToLoad(errorCode);
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdFailedToLoad(int errorCode) {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdFailedToLoad(errorCode);
 }
 
-
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdClosed() { 
-    m_QtAdmobInterstitialIos->interstitialAdClosed();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdClosed() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdClosed();
 }
 
-
-void QtAdmobInterstitialIosDelegateImpl::interstitialAdLoaded() { 
-    m_QtAdmobInterstitialIos->interstitialAdLoaded();
+void QtAdmobInterstitialIosDelegateImpl::interstitialAdLoaded() {
+    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLoaded();
 }
 
 @end

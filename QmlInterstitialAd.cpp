@@ -1,80 +1,76 @@
 #include "QmlInterstitialAd.h"
-#include "QtAdmobInterstitialIosDelegateImpl.h"
 
-#ifdef __cplusplus
-extern "C" {
+#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#include "Platform/Ios/QtAdmobInterstitialIosDelegateImpl.h"
 #endif
 
 #ifdef Q_OS_ANDROID
-// Listener when Java calls onBannerLoaded signal
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdLoaded(JNIEnv *env, jobject thiz)
-{
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
+#include "ActiveRegistry.h"
 
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlInterstitialAd::Instances()->interstitialAdLoaded();
+#include <QCoreApplication>
+#include <QJniEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+
+namespace {
+template <typename Callback>
+void dispatchToQt(jlong nativePointer, Callback callback)
+{
+    if (!ActiveRegistry::contains(nativePointer)) {
+        return;
+    }
+
+    auto* object = reinterpret_cast<QmlInterstitialAd*>(nativePointer);
+    QPointer<QmlInterstitialAd> guard(object);
+    QMetaObject::invokeMethod(object, [guard, nativePointer, callback]() {
+        if (!guard || !ActiveRegistry::contains(nativePointer)) {
+            return;
+        }
+        callback(guard.data());
+    }, Qt::QueuedConnection);
+}
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdClosed(JNIEnv *env, jobject thiz)
+extern "C" {
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobInterstitial_InterstitialAdLoaded(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlInterstitialAd::Instances()->interstitialAdClosed();
+    dispatchToQt(nativePointer, [](QmlInterstitialAd* ad) { emit ad->interstitialAdLoaded(); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdFailedToLoad(JNIEnv *env, jobject thiz, jint errorCode)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobInterstitial_InterstitialAdClosed(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlInterstitialAd::Instances()->interstitialAdFailedToLoad(errorCode);
+    dispatchToQt(nativePointer, [](QmlInterstitialAd* ad) { emit ad->interstitialAdClosed(); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdOpened(JNIEnv *env, jobject thiz)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobInterstitial_InterstitialAdFailedToLoad(JNIEnv*, jobject, jlong nativePointer, jint errorCode)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
-
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlInterstitialAd::Instances()->interstitialAdOpened();
+    dispatchToQt(nativePointer, [errorCode](QmlInterstitialAd* ad) { emit ad->interstitialAdFailedToLoad(errorCode); });
 }
 
-JNIEXPORT void JNICALL Java_com_gmail_manhcuong5993_QtAdMobActivity_InterstitialAdLeftApplication(JNIEnv *env, jobject thiz)
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobInterstitial_InterstitialAdOpened(JNIEnv*, jobject, jlong nativePointer)
 {
-    Q_UNUSED(env)
-    Q_UNUSED(thiz)
+    dispatchToQt(nativePointer, [](QmlInterstitialAd* ad) { emit ad->interstitialAdOpened(); });
+}
 
-    // Emit to QML app by calling bannerLoaded signal
-    emit QmlInterstitialAd::Instances()->interstitialAdLeftApplication();
+JNIEXPORT void JNICALL Java_com_qtadmob_AdMobInterstitial_InterstitialAdLeftApplication(JNIEnv*, jobject, jlong nativePointer)
+{
+    dispatchToQt(nativePointer, [](QmlInterstitialAd* ad) { emit ad->interstitialAdLeftApplication(); });
+}
 }
 #endif
-
-#ifdef __cplusplus
-}
-#endif
-
-static QmlInterstitialAd *mQmlInterstitialAd = nullptr;
 
 QmlInterstitialAd::QmlInterstitialAd()
 {
 #ifdef Q_OS_ANDROID
-    // Update global instance
-    mQmlInterstitialAd = this;
+    ActiveRegistry::registerInstance(this);
 
-    // Create Android Activity on Qt
-    QPlatformNativeInterface* interface = QGuiApplication::platformNativeInterface();
-    jobject activity = (jobject)interface->nativeResourceForIntegration("QtActivity");
-    if (activity)
-    {
-        m_Activity = new QAndroidJniObject(activity);
+    QJniObject activity(QNativeInterface::QAndroidApplication::context());
+    if (activity.isValid()) {
+        m_JavaAd = QJniObject("com/qtadmob/AdMobInterstitial",
+                              "(Landroid/app/Activity;J)V",
+                              activity.object<jobject>(),
+                              reinterpret_cast<jlong>(this));
     }
-
-    // Call InitializeBanner method of Java
-    m_Activity->callMethod<void>("InitializeInterstitialAd");
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
@@ -83,73 +79,88 @@ QmlInterstitialAd::QmlInterstitialAd()
 #endif
 }
 
-QmlInterstitialAd *QmlInterstitialAd::Instances()
+QmlInterstitialAd::~QmlInterstitialAd()
 {
-    return mQmlInterstitialAd;
+#ifdef Q_OS_ANDROID
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("destroy");
+    }
+    ActiveRegistry::unregisterInstance(this);
+#endif
+
+#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+    if (m_AdmobInterstitial) {
+        m_AdmobInterstitial->setQtAdmobInterstitialIos(nullptr);
+        delete m_AdmobInterstitial;
+        m_AdmobInterstitial = nullptr;
+    }
+#endif
 }
 
 void QmlInterstitialAd::setInterstitialAdUnitId(const QString &unitId)
 {
+    m_UnitId = unitId;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(unitId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetInterstitialAdUnitId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(unitId);
+        m_JavaAd.callMethod<void>("setInterstitialAdUnitId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(unitId)
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_AdmobInterstitial->setInterstitialAdUnitId(unitId);
+    if (m_AdmobInterstitial) {
+        m_AdmobInterstitial->setInterstitialAdUnitId(unitId);
+    }
 #endif
 }
 
 void QmlInterstitialAd::setInterstitialAdTestDeviceId(const QString &testDeviceId)
 {
+    m_TestDeviceId = testDeviceId;
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        QAndroidJniObject param1 = QAndroidJniObject::fromString(testDeviceId);
-        // Call SetBannerUnitId method of Java
-        m_Activity->callMethod<void>("SetInterstitialAdTestDeviceId", "(Ljava/lang/String;)V", param1.object<jstring>());
+    if (m_JavaAd.isValid()) {
+        QJniObject value = QJniObject::fromString(testDeviceId);
+        m_JavaAd.callMethod<void>("setTestDeviceId", "(Ljava/lang/String;)V", value.object<jstring>());
     }
 #elif _WIN32
     Q_UNUSED(testDeviceId)
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_AdmobInterstitial->setInterstitialAdTestDeviceId(testDeviceId);
+    if (m_AdmobInterstitial) {
+        m_AdmobInterstitial->setInterstitialAdTestDeviceId(testDeviceId);
+    }
 #endif
 }
 
 void QmlInterstitialAd::loadInterstitialAd()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call LoadBanner method of Java
-        m_Activity->callMethod<void>("LoadInterstitialAd");
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("loadInterstitialAd");
     }
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-    m_AdmobInterstitial->loadInterstitialAd();
+    if (m_AdmobInterstitial) {
+        m_AdmobInterstitial->loadInterstitialAd();
+    }
 #endif
 }
 
 void QmlInterstitialAd::showInterstitialAd()
 {
 #ifdef Q_OS_ANDROID
-    if(m_Activity != nullptr)
-    {
-        // Call ShowInterstitialAd method of Java
-        m_Activity->callMethod<void>("ShowInterstitialAd");
+    if (m_JavaAd.isValid()) {
+        m_JavaAd.callMethod<void>("showInterstitialAd");
     }
 #endif
 
 #if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-   m_AdmobInterstitial->showInterstitialAd();
+    if (m_AdmobInterstitial) {
+        m_AdmobInterstitial->showInterstitialAd();
+    }
 #endif
 }
