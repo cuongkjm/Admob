@@ -1,6 +1,9 @@
 #import "QtAdmobInterstitialIosDelegate.h"
 #include "QmlInterstitialAd.h"
 
+#include <QMetaObject>
+#include <QPointer>
+
 namespace {
 UIViewController* rootViewController()
 {
@@ -45,12 +48,13 @@ UIViewController* rootViewController()
 
 - (void)showInterstitialAd {
     if (!self.interstitialAd) {
+        if (_handler) _handler->interstitialAdFailedToLoad(0);
         return;
     }
 
     UIViewController *controller = rootViewController();
     if (!controller) {
-        _handler->interstitialAdFailedToLoad(0);
+        if (_handler) _handler->interstitialAdFailedToLoad(0);
         return;
     }
 
@@ -63,6 +67,9 @@ UIViewController* rootViewController()
     }
 
     [GADInterstitialAd loadWithAdUnitID:self.unitAdmobId request:self.request completionHandler:^(GADInterstitialAd *ad, NSError *error) {
+        if (!_handler) {
+            return;
+        }
         if (error) {
             _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
             return;
@@ -84,22 +91,26 @@ UIViewController* rootViewController()
 
 - (void)ad:(nonnull id<GADFullScreenPresentingAd>)ad didFailToPresentFullScreenContentWithError:(nonnull NSError *)error {
     Q_UNUSED(ad);
-    _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
+    if (_handler) _handler->interstitialAdFailedToLoad(static_cast<int>(error.code));
 }
 
 - (void)adWillPresentFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
-    _handler->interstitialAdOpened();
+    if (_handler) _handler->interstitialAdOpened();
+}
+
+- (void)adDidRecordClick:(nonnull id<GADFullScreenPresentingAd>)ad {
+    Q_UNUSED(ad);
+    if (_handler) _handler->interstitialAdLeftApplication();
 }
 
 - (void)adWillDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
-    _handler->interstitialAdClosed();
 }
 
 - (void)adDidDismissFullScreenContent:(nonnull id<GADFullScreenPresentingAd>)ad {
     Q_UNUSED(ad);
-    _handler->interstitialAdClosed();
+    if (_handler) _handler->interstitialAdClosed();
     self.interstitialAd = nil;
 }
 
@@ -134,23 +145,48 @@ QtAdmobInterstitialIosDelegateImpl::QtAdmobInterstitialIosDelegateImpl() {
 }
 
 void QtAdmobInterstitialIosDelegateImpl::interstitialAdLeftApplication() {
-    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLeftApplication();
+    QPointer<QmlInterstitialAd> guard(m_QtAdmobInterstitialIos);
+    if (guard) {
+        QMetaObject::invokeMethod(guard.data(), [guard]() {
+            if (guard) emit guard->interstitialAdLeftApplication();
+        }, Qt::QueuedConnection);
+    }
 }
 
 void QtAdmobInterstitialIosDelegateImpl::interstitialAdOpened() {
-    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdOpened();
+    QPointer<QmlInterstitialAd> guard(m_QtAdmobInterstitialIos);
+    if (guard) {
+        QMetaObject::invokeMethod(guard.data(), [guard]() {
+            if (guard) emit guard->interstitialAdOpened();
+        }, Qt::QueuedConnection);
+    }
 }
 
 void QtAdmobInterstitialIosDelegateImpl::interstitialAdFailedToLoad(int errorCode) {
-    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdFailedToLoad(errorCode);
+    QPointer<QmlInterstitialAd> guard(m_QtAdmobInterstitialIos);
+    if (guard) {
+        QMetaObject::invokeMethod(guard.data(), [guard, errorCode]() {
+            if (guard) emit guard->interstitialAdFailedToLoad(errorCode);
+        }, Qt::QueuedConnection);
+    }
 }
 
 void QtAdmobInterstitialIosDelegateImpl::interstitialAdClosed() {
-    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdClosed();
+    QPointer<QmlInterstitialAd> guard(m_QtAdmobInterstitialIos);
+    if (guard) {
+        QMetaObject::invokeMethod(guard.data(), [guard]() {
+            if (guard) emit guard->interstitialAdClosed();
+        }, Qt::QueuedConnection);
+    }
 }
 
 void QtAdmobInterstitialIosDelegateImpl::interstitialAdLoaded() {
-    if (m_QtAdmobInterstitialIos) m_QtAdmobInterstitialIos->interstitialAdLoaded();
+    QPointer<QmlInterstitialAd> guard(m_QtAdmobInterstitialIos);
+    if (guard) {
+        QMetaObject::invokeMethod(guard.data(), [guard]() {
+            if (guard) emit guard->interstitialAdLoaded();
+        }, Qt::QueuedConnection);
+    }
 }
 
 @end

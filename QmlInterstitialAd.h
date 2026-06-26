@@ -7,7 +7,7 @@
 #include <QJniObject>
 #endif
 
-#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#if defined(Q_OS_IOS)
 class QtAdmobInterstitialIosDelegateImpl;
 #endif
 
@@ -43,7 +43,7 @@ private:
     QJniObject m_JavaAd;
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     QtAdmobInterstitialIosDelegateImpl* m_AdmobInterstitial = nullptr;
 #endif
 };
