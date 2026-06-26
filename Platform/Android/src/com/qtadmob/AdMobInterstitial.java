@@ -67,7 +67,12 @@ public class AdMobInterstitial {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (nativePointer.get() == 0 || interstitialAd == null || activity.isFinishing() || activity.isDestroyed()) {
+                long pointer = nativePointer.get();
+                if (pointer == 0) {
+                    return;
+                }
+                if (interstitialAd == null || activity.isFinishing() || activity.isDestroyed()) {
+                    InterstitialAdFailedToLoad(pointer, 0);
                     return;
                 }
                 interstitialAd.show(activity);

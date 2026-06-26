@@ -1,6 +1,6 @@
 #include "QmlInterstitialAd.h"
 
-#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#if defined(Q_OS_IOS)
 #include "Platform/Ios/QtAdmobInterstitialIosDelegateImpl.h"
 #endif
 
@@ -73,7 +73,7 @@ QmlInterstitialAd::QmlInterstitialAd()
     }
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     m_AdmobInterstitial = new QtAdmobInterstitialIosDelegateImpl();
     m_AdmobInterstitial->setQtAdmobInterstitialIos(this);
 #endif
@@ -88,7 +88,7 @@ QmlInterstitialAd::~QmlInterstitialAd()
     ActiveRegistry::unregisterInstance(this);
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     if (m_AdmobInterstitial) {
         m_AdmobInterstitial->setQtAdmobInterstitialIos(nullptr);
         delete m_AdmobInterstitial;
@@ -109,7 +109,7 @@ void QmlInterstitialAd::setInterstitialAdUnitId(const QString &unitId)
     Q_UNUSED(unitId)
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     if (m_AdmobInterstitial) {
         m_AdmobInterstitial->setInterstitialAdUnitId(unitId);
     }
@@ -128,7 +128,7 @@ void QmlInterstitialAd::setInterstitialAdTestDeviceId(const QString &testDeviceI
     Q_UNUSED(testDeviceId)
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     if (m_AdmobInterstitial) {
         m_AdmobInterstitial->setInterstitialAdTestDeviceId(testDeviceId);
     }
@@ -143,7 +143,7 @@ void QmlInterstitialAd::loadInterstitialAd()
     }
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     if (m_AdmobInterstitial) {
         m_AdmobInterstitial->loadInterstitialAd();
     }
@@ -158,7 +158,7 @@ void QmlInterstitialAd::showInterstitialAd()
     }
 #endif
 
-#if (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#if defined(Q_OS_IOS)
     if (m_AdmobInterstitial) {
         m_AdmobInterstitial->showInterstitialAd();
     }
