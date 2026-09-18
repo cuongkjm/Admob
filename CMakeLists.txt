@@ -122,9 +122,38 @@ function(qtadmob_configure_android_target target)
         return()
     endif()
 
+    set(existing_proguard_rules_file "${existing_package_source_dir}/proguard-rules.pro")
+    set(qtadmob_proguard_rules_file "${qtadmob_android_package_source_dir}/proguard-rules.pro")
+    if(NOT EXISTS "${qtadmob_proguard_rules_file}")
+        message(FATAL_ERROR "QtAdMob Android package is missing proguard-rules.pro")
+    endif()
+
+    set(existing_proguard_rules "")
+    if(EXISTS "${existing_proguard_rules_file}")
+        file(READ "${existing_proguard_rules_file}" existing_proguard_rules)
+    endif()
+    file(READ "${qtadmob_proguard_rules_file}" qtadmob_proguard_rules)
+
     set(merged_package_source_dir "${CMAKE_CURRENT_BINARY_DIR}/${target}-qtadmob-android-package")
     file(REMOVE_RECURSE "${merged_package_source_dir}")
     file(COPY "${existing_package_source_dir}/" DESTINATION "${merged_package_source_dir}")
-    file(COPY "${qtadmob_android_package_source_dir}/" DESTINATION "${merged_package_source_dir}")
+    file(COPY "${qtadmob_android_package_source_dir}/"
+        DESTINATION "${merged_package_source_dir}"
+        PATTERN "proguard-rules.pro" EXCLUDE
+    )
+
+    set(merged_proguard_rules "${existing_proguard_rules}")
+    if(NOT merged_proguard_rules STREQUAL "")
+        if(NOT merged_proguard_rules MATCHES "\n$")
+            string(APPEND merged_proguard_rules "\n")
+        endif()
+        string(APPEND merged_proguard_rules "\n")
+    endif()
+    string(APPEND merged_proguard_rules "${qtadmob_proguard_rules}")
+    if(NOT merged_proguard_rules MATCHES "\n$")
+        string(APPEND merged_proguard_rules "\n")
+    endif()
+    file(WRITE "${merged_package_source_dir}/proguard-rules.pro" "${merged_proguard_rules}")
+
     set_property(TARGET ${target} PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR "${merged_package_source_dir}")
 endfunction()
